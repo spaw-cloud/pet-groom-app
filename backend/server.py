@@ -267,7 +267,7 @@ def send_otp_email(to_email: str, otp_code: str):
     </div>
     """
 
-    msg.attach(MIMEText(html, "html")
+    msg.attach(MIMEText(html, "html"))
 
 import smtplib
 
