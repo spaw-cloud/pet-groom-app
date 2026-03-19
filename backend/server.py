@@ -250,9 +250,27 @@ async def get_current_user(request: Request, session_token: Optional[str] = Cook
 # ==================== Auth Routes ====================
 
 def send_otp_email(to_email: str, otp_code: str):
-    print("✅ OTP (mock):", otp_code)
-    return True
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = "Your OTP Code"
 
+        body = f"Your OTP is: {otp_code}"
+        msg.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
+
+        server.send_message(msg)
+        server.quit()
+
+        print("✅ OTP Email Sent Successfully")
+
+    except Exception as e:
+        print("❌ Email Error:", str(e))
+        raise HTTPException(status_code=500, detail="Failed to send OTP email")
 
 def send_booking_confirmation_email(
     client_email: str,
