@@ -26,7 +26,7 @@ export default function Login() {
     const cleanPhone = phone.replace(/\D/g, '');
     try {
       setSending(true); setErrorMsg('');
-      const loginRes = await axios.post(`${BACKEND_URL}/api/auth/login`, { email: email.trim().toLowerCase(), phone: cleanPhone });
+      const loginRes = await axios.post(`${BACKEND_URL}/api/auth/send-otp`, {name, email, phone: cleanPhone });
       localStorage.setItem('session_token', loginRes.data.session_token);
       await refreshUser();
       navigate('/tabs', { replace: true });
