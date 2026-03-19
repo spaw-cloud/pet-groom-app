@@ -1,0 +1,454 @@
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Cookie
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+import os
+import logging
+from pathlib import Path
+from pydantic import BaseModel, Field
+from typing import List, Optional
+import uuid
+from datetime import datetime, timezone, timedelta
+import httpx
+
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# MongoDB connection
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
+
+# Create the main app without a prefix
+app = FastAPI()
+
+# Create a router with the /api prefix
+api_router = APIRouter(prefix="/api")
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# ==================== Models ====================
+
+class User(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+    phone: Optional[str] = None
+    created_at: datetime
+
+class UserSession(BaseModel):
+    user_id: str
+    session_token: str
+    expires_at: datetime
+    created_at: datetime
+
+class Pet(BaseModel):
+    pet_id: str
+    user_id: str
+    name: str
+    breed: str
+    age: Optional[int] = None
+    weight: Optional[str] = None
+    photo_base64: Optional[str] = None
+    special_notes: Optional[str] = None
+    created_at: datetime
+
+class PetCreate(BaseModel):
+    name: str
+    breed: str
+    age: Optional[int] = None
+    weight: Optional[str] = None
+    photo_base64: Optional[str] = None
+    special_notes: Optional[str] = None
+
+class PetUpdate(BaseModel):
+    name: Optional[str] = None
+    breed: Optional[str] = None
+    age: Optional[int] = None
+    weight: Optional[str] = None
+    photo_base64: Optional[str] = None
+    special_notes: Optional[str] = None
+
+class Service(BaseModel):
+    service_id: str
+    name: str
+    description: str
+    duration: str  # e.g., "1 hour"
+    price: float
+    icon: Optional[str] = None
+
+class Booking(BaseModel):
+    booking_id: str
+    user_id: str
+    pet_id: str
+    service_id: str
+    date: str  # YYYY-MM-DD
+    time: str  # HH:MM
+    address: str
+    status: str  # pending, confirmed, completed, cancelled
+    payment_status: str  # unpaid, paid, refunded
+    payment_type: Optional[str] = None  # upfront, post_service
+    payment_transaction_id: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+
+class BookingCreate(BaseModel):
+    pet_id: str
+    service_id: str
+    date: str
+    time: str
+    address: str
+    payment_type: str  # upfront or post_service
+    notes: Optional[str] = None
+
+class BookingUpdate(BaseModel):
+    status: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+
+# ==================== Authentication Helper ====================
+
+async def get_current_user(request: Request, session_token: Optional[str] = Cookie(None)) -> User:
+    """Get current user from session token (cookie or header)"""
+    # Try to get token from cookie first
+    token = session_token
+    
+    # If not in cookie, try Authorization header
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Find session in database
+    session_doc = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
+    if not session_doc:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    # Check expiry
+    expires_at = session_doc["expires_at"]
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="Session expired")
+    
+    # Get user
+    user_doc = await db.users.find_one({"user_id": session_doc["user_id"]}, {"_id": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return User(**user_doc)
+
+# ==================== Auth Routes ====================
+
+@api_router.post("/auth/session")
+async def create_session(request: Request, response: Response):
+    """Exchange session_id for session_token"""
+    body = await request.json()
+    session_id = body.get('session_id')
+    
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id required")
+    
+    # Call Emergent Auth to get user data
+    async with httpx.AsyncClient() as client:
+        auth_response = await client.get(
+            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            headers={"X-Session-ID": session_id}
+        )
+        
+        if auth_response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid session_id")
+        
+        user_data = auth_response.json()
+    
+    # Create or update user
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    existing_user = await db.users.find_one({"email": user_data["email"]}, {"_id": 0})
+    
+    if existing_user:
+        user_id = existing_user["user_id"]
+        # Update user info
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {
+                "name": user_data["name"],
+                "picture": user_data.get("picture")
+            }}
+        )
+    else:
+        # Create new user
+        await db.users.insert_one({
+            "user_id": user_id,
+            "email": user_data["email"],
+            "name": user_data["name"],
+            "picture": user_data.get("picture"),
+            "phone": None,
+            "created_at": datetime.now(timezone.utc)
+        })
+    
+    # Create session
+    session_token = user_data["session_token"]
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": session_token,
+        "expires_at": expires_at,
+        "created_at": datetime.now(timezone.utc)
+    })
+    
+    # Set cookie
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=7 * 24 * 60 * 60  # 7 days
+    )
+    
+    # Get full user data
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    return User(**user_doc)
+
+@api_router.get("/auth/me")
+async def get_me(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Get current user info"""
+    user = await get_current_user(request, session_token)
+    return user
+
+@api_router.post("/auth/logout")
+async def logout(request: Request, response: Response, session_token: Optional[str] = Cookie(None)):
+    """Logout user"""
+    if session_token:
+        await db.user_sessions.delete_one({"session_token": session_token})
+    
+    response.delete_cookie(key="session_token", path="/")
+    return {"message": "Logged out successfully"}
+
+# ==================== Services Routes ====================
+
+@api_router.get("/services", response_model=List[Service])
+async def get_services():
+    """Get all available services"""
+    services = await db.services.find({}, {"_id": 0}).to_list(100)
+    if not services:
+        # Initialize default services if none exist
+        default_services = [
+            {
+                "service_id": f"service_{uuid.uuid4().hex[:8]}",
+                "name": "Basic Bath",
+                "description": "Complete bath with premium shampoo and blow dry",
+                "duration": "45 mins",
+                "price": 49.99,
+                "icon": "💧"
+            },
+            {
+                "service_id": f"service_{uuid.uuid4().hex[:8]}",
+                "name": "Full Grooming",
+                "description": "Bath, haircut, nail trim, and ear cleaning",
+                "duration": "2 hours",
+                "price": 89.99,
+                "icon": "✂️"
+            },
+            {
+                "service_id": f"service_{uuid.uuid4().hex[:8]}",
+                "name": "Nail Trim",
+                "description": "Professional nail trimming and filing",
+                "duration": "20 mins",
+                "price": 19.99,
+                "icon": "💅"
+            },
+            {
+                "service_id": f"service_{uuid.uuid4().hex[:8]}",
+                "name": "Deluxe Spa",
+                "description": "Premium grooming with massage and aromatherapy",
+                "duration": "3 hours",
+                "price": 149.99,
+                "icon": "🛁"
+            }
+        ]
+        await db.services.insert_many(default_services)
+        services = default_services
+    
+    return [Service(**s) for s in services]
+
+# ==================== Pets Routes ====================
+
+@api_router.get("/pets", response_model=List[Pet])
+async def get_pets(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Get all pets for current user"""
+    user = await get_current_user(request, session_token)
+    pets = await db.pets.find({"user_id": user.user_id}, {"_id": 0}).to_list(100)
+    return [Pet(**p) for p in pets]
+
+@api_router.post("/pets", response_model=Pet)
+async def create_pet(pet_data: PetCreate, request: Request, session_token: Optional[str] = Cookie(None)):
+    """Create a new pet"""
+    user = await get_current_user(request, session_token)
+    
+    pet_id = f"pet_{uuid.uuid4().hex[:12]}"
+    pet_dict = pet_data.model_dump()
+    pet_dict["pet_id"] = pet_id
+    pet_dict["user_id"] = user.user_id
+    pet_dict["created_at"] = datetime.now(timezone.utc)
+    
+    await db.pets.insert_one(pet_dict)
+    
+    pet_doc = await db.pets.find_one({"pet_id": pet_id}, {"_id": 0})
+    return Pet(**pet_doc)
+
+@api_router.put("/pets/{pet_id}", response_model=Pet)
+async def update_pet(pet_id: str, pet_data: PetUpdate, request: Request, session_token: Optional[str] = Cookie(None)):
+    """Update a pet"""
+    user = await get_current_user(request, session_token)
+    
+    # Check if pet belongs to user
+    pet = await db.pets.find_one({"pet_id": pet_id, "user_id": user.user_id}, {"_id": 0})
+    if not pet:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    
+    # Update pet
+    update_data = {k: v for k, v in pet_data.model_dump().items() if v is not None}
+    if update_data:
+        await db.pets.update_one(
+            {"pet_id": pet_id},
+            {"$set": update_data}
+        )
+    
+    pet_doc = await db.pets.find_one({"pet_id": pet_id}, {"_id": 0})
+    return Pet(**pet_doc)
+
+@api_router.delete("/pets/{pet_id}")
+async def delete_pet(pet_id: str, request: Request, session_token: Optional[str] = Cookie(None)):
+    """Delete a pet"""
+    user = await get_current_user(request, session_token)
+    
+    result = await db.pets.delete_one({"pet_id": pet_id, "user_id": user.user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    
+    return {"message": "Pet deleted successfully"}
+
+# ==================== Bookings Routes ====================
+
+@api_router.get("/bookings", response_model=List[Booking])
+async def get_bookings(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Get all bookings for current user"""
+    user = await get_current_user(request, session_token)
+    bookings = await db.bookings.find({"user_id": user.user_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [Booking(**b) for b in bookings]
+
+@api_router.post("/bookings", response_model=Booking)
+async def create_booking(booking_data: BookingCreate, request: Request, session_token: Optional[str] = Cookie(None)):
+    """Create a new booking"""
+    user = await get_current_user(request, session_token)
+    
+    # Verify pet belongs to user
+    pet = await db.pets.find_one({"pet_id": booking_data.pet_id, "user_id": user.user_id})
+    if not pet:
+        raise HTTPException(status_code=404, detail="Pet not found")
+    
+    # Verify service exists
+    service = await db.services.find_one({"service_id": booking_data.service_id})
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    
+    booking_id = f"booking_{uuid.uuid4().hex[:12]}"
+    booking_dict = booking_data.model_dump()
+    booking_dict["booking_id"] = booking_id
+    booking_dict["user_id"] = user.user_id
+    booking_dict["status"] = "pending"
+    booking_dict["created_at"] = datetime.now(timezone.utc)
+    
+    await db.bookings.insert_one(booking_dict)
+    
+    booking_doc = await db.bookings.find_one({"booking_id": booking_id}, {"_id": 0})
+    return Booking(**booking_doc)
+
+@api_router.put("/bookings/{booking_id}", response_model=Booking)
+async def update_booking(booking_id: str, booking_data: BookingUpdate, request: Request, session_token: Optional[str] = Cookie(None)):
+    """Update a booking"""
+    user = await get_current_user(request, session_token)
+    
+    # Check if booking belongs to user
+    booking = await db.bookings.find_one({"booking_id": booking_id, "user_id": user.user_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Update booking
+    update_data = {k: v for k, v in booking_data.model_dump().items() if v is not None}
+    if update_data:
+        await db.bookings.update_one(
+            {"booking_id": booking_id},
+            {"$set": update_data}
+        )
+    
+    booking_doc = await db.bookings.find_one({"booking_id": booking_id}, {"_id": 0})
+    return Booking(**booking_doc)
+
+@api_router.delete("/bookings/{booking_id}")
+async def delete_booking(booking_id: str, request: Request, session_token: Optional[str] = Cookie(None)):
+    """Cancel/Delete a booking"""
+    user = await get_current_user(request, session_token)
+    
+    result = await db.bookings.update_one(
+        {"booking_id": booking_id, "user_id": user.user_id},
+        {"$set": {"status": "cancelled"}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    return {"message": "Booking cancelled successfully"}
+
+# ==================== User Profile Routes ====================
+
+@api_router.put("/user/profile", response_model=User)
+async def update_profile(profile_data: UserProfileUpdate, request: Request, session_token: Optional[str] = Cookie(None)):
+    """Update user profile"""
+    user = await get_current_user(request, session_token)
+    
+    update_data = {k: v for k, v in profile_data.model_dump().items() if v is not None}
+    if update_data:
+        await db.users.update_one(
+            {"user_id": user.user_id},
+            {"$set": update_data}
+        )
+    
+    user_doc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    return User(**user_doc)
+
+# Include the router in the main app
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    client.close()
