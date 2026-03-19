@@ -256,32 +256,42 @@ def send_otp_email(to_email: str, otp_code: str):
     msg["From"] = SMTP_EMAIL
     msg["To"] = to_email
 
-    html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f172a;border-radius:16px">
-      <h2 style="color:#8B5CF6;margin:0 0 8px">Spaw Group</h2>
-      <p style="color:#e2e8f0;font-size:15px;margin:0 0 20px">Your one-time verification code is:</p>
-      <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin:0 0 20px">
-        <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#8B5CF6">{otp_code}</span>
-      </div>
-      <p style="color:#94a3b8;font-size:13px;margin:0">This code expires in 5 minutes. Do not share it with anyone.</p>
-    </div>
-    """
-    msg.attach(MIMEText(html, "html"))
-    import smtplib
+  html = f"""
+<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f172a;border-radius:16px">
+  <h2 style="color:#8B5CF6;margin:0 0 8px">Spaw Group</h2>
+  <p style="color:#e2e8f0;font-size:15px;margin:0 0 20px">Your one-time verification code is:</p>
+  <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin:0 0 20px">
+    <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#8B5CF6">{otp_code}</span>
+  </div>
+  <p style="color:#94a3b8;font-size:13px;margin:0">This code expires in 5 minutes. Do not share it with anyone.</p>
+</div>
+"""
+
+msg.attach(MIMEText(html, "html"))
+
+import smtplib
 
 try:
-server = smtplib.SMTP("smtp.gmail.com", 587)
-server.starttls()
-server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
-server.send_message(msg)
-server.quit()
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
+    server.send_message(msg)
+    server.quit()
 
 except Exception as e:
-print("SMTP ERROR:", str(e))
-raise Exception(str(e))
+    print("SMTP ERROR:", str(e))
+    raise Exception(str(e))
 
 
-def send_booking_confirmation_email(client_email: str, client_name: str, service_name: str, pet_name: str, date: str, time: str, booking_id: str):
+def send_booking_confirmation_email(
+    client_email: str,
+    client_name: str,
+    service_name: str,
+    pet_name: str,
+    date: str,
+    time: str,
+    booking_id: str
+):
     """Send booking confirmation email to both client and Spaw Group"""
     # Email to client
     client_html = f"""
