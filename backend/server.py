@@ -271,16 +271,8 @@ def send_otp_email(to_email: str, otp_code: str):
 
 import smtplib
 
-try:
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
-    server.send_message(msg)
-    server.quit()
-
-except Exception as e:
-    print("ERROR:", e)
-    raise Exception(str(e))
+print("✅ OTP (mock):", otp_code)
+return True
 
 
 def send_booking_confirmation_email(
