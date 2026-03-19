@@ -256,7 +256,7 @@ def send_otp_email(to_email: str, otp_code: str):
     msg["From"] = SMTP_EMAIL
     msg["To"] = to_email
 
-  html = f"""
+html = f"""
 <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f172a;border-radius:16px">
   <h2 style="color:#8B5CF6;margin:0 0 8px">Spaw Group</h2>
   <p style="color:#e2e8f0;font-size:15px;margin:0 0 20px">Your one-time verification code is:</p>
