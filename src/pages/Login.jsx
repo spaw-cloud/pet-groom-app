@@ -20,38 +20,28 @@ export default function Login() {
   }, [user, loading, navigate]);
 
   const handleSendOTP = async () => {
-    if (!name || name.trim().length < 2) { setErrorMsg('Please enter your name'); return; }
-    if (!email || !email.includes('@') || !email.includes('.')) { setErrorMsg('Please enter a valid email address'); return; }
-    if (!phone || phone.replace(/\D/g, '').length < 10) { setErrorMsg('Please enter a valid 10-digit phone number'); return; }
-    const cleanPhone = phone.replace(/\D/g, '');
-    try {
-      setSending(true); setErrorMsg('');
-      const loginRes = await axios.post(`${BACKEND_URL}/api/auth/send-otp`, {name, email, phone: cleanPhone });
-      localStorage.setItem('session_token', loginRes.data.session_token);
-      await refreshUser();
-      navigate('/tabs', { replace: true });
+  const cleanPhone = phone.replace(/\D/g, '');
 
-setSending(true);
-setErrorMsg('');
+  try {
+    setSending(true);
+    setErrorMsg('');
 
-const loginRes = await axios.post(`${BACKEND_URL}/api/auth/send-otp`, {
-name,
-email,
-phone: cleanPhone
-});
+    await axios.post(`${BACKEND_URL}/api/auth/send-otp`, {
+      name,
+      email,
+      phone: cleanPhone
+    });
 
-navigate('/verify-otp', {
-state: {
-email,
-phone: cleanPhone,
-name
-}
-});
+    navigate('/verify-otp', {
+      state: { email, phone: cleanPhone, name }
+    });
 
-} finally {
-setSending(false);
-} finally { setSending(false); }
-  };
+  } catch (err) {
+    setErrorMsg('Failed to send OTP');
+  } finally {
+    setSending(false);
+  }
+};
 
   if (loading) return <div className="page" style={{ justifyContent: 'center', alignItems: 'center' }}><div className="spinner" /><p style={{ color: '#fff', marginTop: 16 }}>Loading...</p></div>;
   if (user) return <div className="page" style={{ justifyContent: 'center', alignItems: 'center' }}><div className="spinner" /><p style={{ color: '#fff', marginTop: 16 }}>Redirecting...</p></div>;
