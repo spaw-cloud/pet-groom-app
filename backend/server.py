@@ -250,25 +250,8 @@ async def get_current_user(request: Request, session_token: Optional[str] = Cook
 # ==================== Auth Routes ====================
 
 def send_otp_email(to_email: str, otp_code: str):
-    """Send OTP via Gmail SMTP"""
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"Spaw Group - Your Login OTP: {otp_code}"
-    msg["From"] = SMTP_EMAIL
-    msg["To"] = to_email
-
-    html = f"""
-    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#0f172a;border-radius:16px">
-      <h2 style="color:#8B5CF6;margin:0 0 8px">Spaw Group</h2>
-      <p style="color:#e2e8f0;font-size:15px;margin:0 0 20px">Your one-time verification code is:</p>
-      <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin:0 0 20px">
-        <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#8B5CF6">{otp_code}</span>
-      </div>
-      <p style="color:#94a3b8;font-size:13px;margin:0">This code expires in 5 minutes. Do not share it with anyone.</p>
-    </div>
-    """
-
-    msg.attach(MIMEText(html, "html"))
-
+print("✅ OTP (mock):", otp_code)
+return True
 import smtplib
 
 print("✅ OTP (mock):", otp_code)
