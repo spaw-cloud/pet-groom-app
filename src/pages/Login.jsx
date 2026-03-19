@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { IoPerson, IoCall, IoMail, IoAlertCircle, IoInformationCircle, IoArrowForward, IoCalendar, IoHome, IoStar } from 'react-icons/io5';
 import axios from 'axios';
 
-const BACKEND_URL = import.meta.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = "https://pet-groom-app.onrender.com";
 
 export default function Login() {
   const { user, loading, sendOTP, refreshUser } = useAuth();
