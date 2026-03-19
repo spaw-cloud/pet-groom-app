@@ -279,7 +279,7 @@ try:
     server.quit()
 
 except Exception as e:
-    print("SMTP ERROR:", str(e))
+    print("ERROR:", e)
     raise Exception(str(e))
 
 
