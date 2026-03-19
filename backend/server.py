@@ -267,10 +267,18 @@ def send_otp_email(to_email: str, otp_code: str):
     </div>
     """
     msg.attach(MIMEText(html, "html"))
+    import smtplib
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+try:
+server = smtplib.SMTP("smtp.gmail.com", 587)
+server.starttls()
+server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
+server.send_message(msg)
+server.quit()
+
+except Exception as e:
+print("SMTP ERROR:", str(e))
+raise Exception(str(e))
 
 def send_booking_confirmation_email(client_email: str, client_name: str, service_name: str, pet_name: str, date: str, time: str, booking_id: str):
     """Send booking confirmation email to both client and Spaw Group"""
