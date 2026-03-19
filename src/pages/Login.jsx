@@ -30,18 +30,27 @@ export default function Login() {
       localStorage.setItem('session_token', loginRes.data.session_token);
       await refreshUser();
       navigate('/tabs', { replace: true });
-    } catch (loginErr) {
-      if (loginErr?.response?.status === 404) {
-        try {
-          await sendOTP(email.trim().toLowerCase());
-          navigate('/verify-otp', { state: { email: email.trim().toLowerCase(), phone: cleanPhone, name: name.trim() } });
-        } catch (otpErr) {
-          setErrorMsg(otpErr?.response?.data?.detail || 'Failed to send OTP.');
-        }
-      } else {
-        setErrorMsg(loginErr?.response?.data?.detail || 'Login failed. Please try again.');
-      }
-    } finally { setSending(false); }
+
+setSending(true);
+setErrorMsg('');
+
+const loginRes = await axios.post(`${BACKEND_URL}/api/auth/send-otp`, {
+name,
+email,
+phone: cleanPhone
+});
+
+navigate('/verify-otp', {
+state: {
+email,
+phone: cleanPhone,
+name
+}
+});
+
+} finally {
+setSending(false);
+} finally { setSending(false); }
   };
 
   if (loading) return <div className="page" style={{ justifyContent: 'center', alignItems: 'center' }}><div className="spinner" /><p style={{ color: '#fff', marginTop: 16 }}>Loading...</p></div>;
