@@ -262,6 +262,7 @@ html = f"""
   <p style="color:#e2e8f0;font-size:15px;margin:0 0 20px">Your one-time verification code is:</p>
   <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin:0 0 20px">
     <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#8B5CF6">{otp_code}</span>
+</div>
   </div>
   <p style="color:#94a3b8;font-size:13px;margin:0">This code expires in 5 minutes. Do not share it with anyone.</p>
 </div>
