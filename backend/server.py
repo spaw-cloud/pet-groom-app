@@ -250,12 +250,8 @@ async def get_current_user(request: Request, session_token: Optional[str] = Cook
 # ==================== Auth Routes ====================
 
 def send_otp_email(to_email: str, otp_code: str):
-print("✅ OTP (mock):", otp_code)
-return True
-import smtplib
-
-print("✅ OTP (mock):", otp_code)
-return True
+    print("✅ OTP (mock):", otp_code)
+    return True
 
 
 def send_booking_confirmation_email(
