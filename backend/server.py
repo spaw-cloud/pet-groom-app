@@ -489,18 +489,23 @@ async def verify_otp(request: Request, response: Response):
     if not email or not otp:
         raise HTTPException(status_code=400, detail="Email and OTP required")
 
-    stored = await db.otp_codes.find_one({"email": email}, {"_id": 0})
+    stored = await db.otp_codes.find_one(
+    {"email": email},
+    sort=[("created_at", -1)]
+)
 
-    if not stored:
-        raise HTTPException(status_code=401, detail="No OTP found. Please request again.")
+if not stored:
+    raise HTTPException(status_code=401, detail="No OTP found. Please request again.")
 
-    stored_otp = str(stored.get("otp")).strip()
+stored_otp = str(stored.get("otp")).strip()
 
-    print("Entered OTP:", otp)
-    print("Stored OTP:", stored_otp)
+# ✅ DEBUG (leave this for now)
+print("Entered OTP:", otp)
+print("Stored OTP:", stored_otp)
 
-    if stored_otp != otp:
-        raise HTTPException(status_code=401, detail="Invalid OTP")
+# ✅ FIXED COMPARISON
+if str(stored_otp).strip() != str(otp).strip():
+    raise HTTPException(status_code=401, detail="Invalid OTP")
 
     expires_at = stored.get("expires_at")
 
