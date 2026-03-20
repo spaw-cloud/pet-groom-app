@@ -251,6 +251,8 @@ async def get_current_user(request: Request, session_token: Optional[str] = Cook
 
 def send_otp_email(to_email: str, otp_code: str):
     try:
+        print(f"📩 Sending OTP {otp_code} to {to_email}")
+
         msg = MIMEMultipart()
         msg["From"] = SMTP_EMAIL
         msg["To"] = to_email
@@ -259,12 +261,10 @@ def send_otp_email(to_email: str, otp_code: str):
         body = f"Your OTP is: {otp_code}"
         msg.attach(MIMEText(body, "plain"))
 
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
-
-        server.send_message(msg)
-        server.quit()
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
+            server.send_message(msg)
 
         print("✅ OTP Email Sent Successfully")
 
@@ -478,45 +478,60 @@ async def resend_otp(request: Request):
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(request: Request, response: Response):
-    """Verify email OTP and create session"""
     body = await request.json()
+
     email = body.get('email', '').strip().lower()
-    otp = body.get('otp', '').strip()
+    otp = str(body.get('otp', '')).strip()
     phone = body.get('phone', '').strip()
     name = body.get('name', '').strip()
 
     if not email or not otp:
         raise HTTPException(status_code=400, detail="Email and OTP required")
 
-    # Look up stored OTP
     stored = await db.otp_codes.find_one({"email": email}, {"_id": 0})
-    if not stored:
-        raise HTTPException(status_code=401, detail="No OTP found. Please request a new one.")
-    if stored["otp"] != otp:
-        raise HTTPException(status_code=401, detail="Invalid OTP. Please check and try again.")
-    if datetime.now(timezone.utc) > stored["expires_at"].replace(tzinfo=timezone.utc):
-        await db.otp_codes.delete_many({"email": email})
-        raise HTTPException(status_code=401, detail="OTP expired. Please request a new one.")
 
-    # OTP valid — clean up
+    if not stored:
+        raise HTTPException(status_code=401, detail="No OTP found. Please request again.")
+
+    stored_otp = str(stored.get("otp")).strip()
+
+    # 🔍 DEBUG (check in Render logs)
+    print(f"Entered OTP: {otp}")
+    print(f"Stored OTP: {stored_otp}")
+
+    if stored_otp != otp:
+        raise HTTPException(status_code=401, detail="Invalid OTP")
+
+    # ✅ FIXED EXPIRY CHECK
+    expires_at = stored.get("expires_at")
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expires_at:
+        await db.otp_codes.delete_many({"email": email})
+        raise HTTPException(status_code=401, detail="OTP expired")
+
+    # ✅ DELETE OTP AFTER SUCCESS
     await db.otp_codes.delete_many({"email": email})
-    
-    # Create or get user by email
-    user_id = f"user_{uuid.uuid4().hex[:12]}"
+
+    # ===== USER =====
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
-    
+
     if existing_user:
         user_id = existing_user["user_id"]
-        update_data = {"last_login": datetime.now(timezone.utc)}
-        if phone:
-            update_data["phone"] = phone
-        if name:
-            update_data["name"] = name
+
         await db.users.update_one(
             {"user_id": user_id},
-            {"$set": update_data}
+            {"$set": {
+                "last_login": datetime.now(timezone.utc),
+                "phone": phone or existing_user.get("phone"),
+                "name": name or existing_user.get("name")
+            }}
         )
     else:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+
         await db.users.insert_one({
             "user_id": user_id,
             "email": email,
@@ -526,19 +541,17 @@ async def verify_otp(request: Request, response: Response):
             "created_at": datetime.now(timezone.utc),
             "last_login": datetime.now(timezone.utc)
         })
-    
-    # Create session
+
+    # ===== SESSION =====
     session_token = f"session_{uuid.uuid4().hex}"
-    expires_at = datetime.now(timezone.utc) + timedelta(days=30)
-    
+
     await db.user_sessions.insert_one({
         "user_id": user_id,
         "session_token": session_token,
-        "expires_at": expires_at,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=30)
     })
-    
-    # Set cookie
+
     response.set_cookie(
         key="session_token",
         value=session_token,
@@ -546,16 +559,13 @@ async def verify_otp(request: Request, response: Response):
         secure=True,
         samesite="none",
         path="/",
-        max_age=30 * 24 * 60 * 60  # 30 days
+        max_age=30 * 24 * 60 * 60
     )
-    
-    # Get full user data
+
     user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    user_data = User(**user_doc).model_dump()
-    
-    # Return session token in response body for mobile apps
+
     return {
-        **user_data,
+        **user_doc,
         "session_token": session_token
     }
 
