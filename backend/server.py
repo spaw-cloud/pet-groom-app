@@ -261,10 +261,11 @@ def send_otp_email(to_email: str, otp_code: str):
         body = f"Your OTP is: {otp_code}"
         msg.attach(MIMEText(body, "plain"))
 
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
-            server.send_message(msg)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
 
         print("✅ OTP Email Sent Successfully")
 
@@ -495,14 +496,12 @@ async def verify_otp(request: Request, response: Response):
 
     stored_otp = str(stored.get("otp")).strip()
 
-    # 🔍 DEBUG (check in Render logs)
-    print(f"Entered OTP: {otp}")
-    print(f"Stored OTP: {stored_otp}")
+    print("Entered OTP:", otp)
+    print("Stored OTP:", stored_otp)
 
     if stored_otp != otp:
         raise HTTPException(status_code=401, detail="Invalid OTP")
 
-    # ✅ FIXED EXPIRY CHECK
     expires_at = stored.get("expires_at")
 
     if expires_at.tzinfo is None:
@@ -512,10 +511,8 @@ async def verify_otp(request: Request, response: Response):
         await db.otp_codes.delete_many({"email": email})
         raise HTTPException(status_code=401, detail="OTP expired")
 
-    # ✅ DELETE OTP AFTER SUCCESS
     await db.otp_codes.delete_many({"email": email})
 
-    # ===== USER =====
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
 
     if existing_user:
@@ -542,7 +539,6 @@ async def verify_otp(request: Request, response: Response):
             "last_login": datetime.now(timezone.utc)
         })
 
-    # ===== SESSION =====
     session_token = f"session_{uuid.uuid4().hex}"
 
     await db.user_sessions.insert_one({
