@@ -33,18 +33,27 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { checkAuth(); }, []);
 
-  const sendOTP = async (email) => {
-    await axios.post(`${BACKEND_URL}/api/auth/send-otp`, { email });
-  };
-
   const verifyOTP = async (email, otp, phone, name) => {
-    const response = await axios.post(`${BACKEND_URL}/api/auth/verify-otp`, { email, otp, phone, name });
-    const sessionToken = response.data.session_token;
-    if (!sessionToken) throw new Error('No session token received');
-    localStorage.setItem('session_token', sessionToken);
-    const { session_token, ...userData } = response.data;
-    setUser(userData);
-    setToken(sessionToken);
+  const cleanOtp = String(otp).trim();
+
+  const response = await axios.post(
+    `${BACKEND_URL}/api/auth/verify-otp`,
+    {
+      email,
+      otp: cleanOtp,
+      phone,
+      name
+    }
+  );
+
+  const sessionToken = response.data.session_token;
+  if (!sessionToken) throw new Error('No session token received');
+
+  localStorage.setItem('session_token', sessionToken);
+
+  const { session_token, ...userData } = response.data;
+  setUser(userData);
+  setToken(sessionToken);
   };
 
   const logout = async () => {
