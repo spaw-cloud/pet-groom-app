@@ -33,6 +33,15 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { checkAuth(); }, []);
 
+  const sendOTP = async (email) => {
+  try {
+    await axios.post(`${BACKEND_URL}/api/auth/send-otp`, { email });
+  } catch (error) {
+    console.error("SEND OTP ERROR:", error);
+    throw error;
+  }
+};
+  
   const verifyOTP = async (email, otp, phone, name) => {
   const cleanOtp = String(otp).trim();
 
