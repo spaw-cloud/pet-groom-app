@@ -504,18 +504,18 @@ async def verify_otp(request: Request):
     print("Entered OTP:", otp)
     print("Stored OTP:", stored_otp)
 
-    # ⏳ Check expiry
+    # ⏳ Expiry check
     if record.get("expires_at") < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="OTP expired")
 
-    # ❌ Compare OTP
+    # ❌ OTP mismatch
     if otp != stored_otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    # ✅ OTP correct → delete it
+    # ✅ SUCCESS → delete OTP
     await db.otp_codes.delete_many({"email": email})
 
-    # ✅ create session token (adjust if needed)
+    # ✅ Return session token
     session_token = str(uuid.uuid4())
 
     return {
