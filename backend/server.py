@@ -479,10 +479,7 @@ async def resend_otp(request: Request):
     await db.otp_requests.insert_one({
         "email": email, "created_at": datetime.now(timezone.utc)
     })
-
-    remaining = 3 - recent_count - 1
-    logger.info(f"OTP resent to {email}")
-    return {"success": True, "message": "OTP resent to your email", "attempts_remaining": remaining}
+    
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(request: Request):
@@ -493,8 +490,11 @@ async def verify_otp(request: Request):
     if not email or not otp:
         raise HTTPException(status_code=400, detail="Email and OTP required")
 
-    # 🔍 Get OTP from DB
-    record = await db.otp_codes.find_one({"email": email})
+    # 🔍 ALWAYS GET LATEST OTP
+    record = await db.otp_codes.find_one(
+        {"email": email},
+        sort=[("created_at", -1)]
+    )
 
     if not record:
         raise HTTPException(status_code=400, detail="No OTP found")
@@ -508,14 +508,13 @@ async def verify_otp(request: Request):
     if record.get("expires_at") < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="OTP expired")
 
-    # ❌ OTP mismatch
+    # ❌ MISMATCH
     if otp != stored_otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    # ✅ SUCCESS → delete OTP
+    # ✅ SUCCESS
     await db.otp_codes.delete_many({"email": email})
 
-    # ✅ Return session token
     session_token = str(uuid.uuid4())
 
     return {
