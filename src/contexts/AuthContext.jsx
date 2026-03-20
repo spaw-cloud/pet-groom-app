@@ -36,25 +36,35 @@ export function AuthProvider({ children }) {
   const verifyOTP = async (email, otp, phone, name) => {
   const cleanOtp = String(otp).trim();
 
-  const response = await axios.post(
-    `${BACKEND_URL}/api/auth/verify-otp`,
-    {
-      email,
-      otp: cleanOtp,
-      phone,
-      name
+  try {
+    const response = await axios.post(
+      `${BACKEND_URL}/api/auth/verify-otp`,
+      {
+        email,
+        otp: cleanOtp,
+        phone,
+        name,
+      }
+    );
+
+    const sessionToken = response.data.session_token;
+
+    if (!sessionToken) {
+      throw new Error("No session token received");
     }
-  );
 
-  const sessionToken = response.data.session_token;
-  if (!sessionToken) throw new Error('No session token received');
+    localStorage.setItem("session_token", sessionToken);
 
-  localStorage.setItem('session_token', sessionToken);
+    const { session_token, ...userData } = response.data;
 
-  const { session_token, ...userData } = response.data;
-  setUser(userData);
-  setToken(sessionToken);
-  };
+    setUser(userData);
+    setToken(sessionToken);
+
+  } catch (error) {
+    console.error("OTP VERIFY ERROR:", error);
+    throw error;
+  }
+};
 
   const logout = async () => {
     try {
