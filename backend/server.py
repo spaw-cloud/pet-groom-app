@@ -485,91 +485,42 @@ async def resend_otp(request: Request):
     return {"success": True, "message": "OTP resent to your email", "attempts_remaining": remaining}
 
 @api_router.post("/auth/verify-otp")
-async def verify_otp(request: Request, response: Response):
+async def verify_otp(request: Request):
     body = await request.json()
-
-    email = body.get('email', '').strip().lower()
-    otp = str(body.get('otp', '')).strip()
-    phone = body.get('phone', '').strip()
-    name = body.get('name', '').strip()
+    email = body.get("email", "").strip().lower()
+    otp = str(body.get("otp", "")).strip()
 
     if not email or not otp:
         raise HTTPException(status_code=400, detail="Email and OTP required")
 
-    stored = await db.otp_codes.find_one(
-        {"email": email},
-        sort=[("created_at", -1)]
-    )
+    # 🔍 Get OTP from DB
+    record = await db.otp_codes.find_one({"email": email})
 
-    if not stored:
-        raise HTTPException(status_code=401, detail="No OTP found. Please request again.")
+    if not record:
+        raise HTTPException(status_code=400, detail="No OTP found")
 
-    stored_otp = str(stored.get("otp")).strip()
+    stored_otp = str(record.get("otp")).strip()
 
     print("Entered OTP:", otp)
     print("Stored OTP:", stored_otp)
 
-    if str(otp).strip() != str(stored_otp).strip():
-        raise HTTPException(status_code=401, detail="Invalid OTP")
+    # ⏳ Check expiry
+    if record.get("expires_at") < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="OTP expired")
 
-    expires_at = stored.get("expires_at")
+    # ❌ Compare OTP
+    if otp != stored_otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    # ✅ OTP correct → delete it
+    await db.otp_codes.delete_many({"email": email})
 
-    if datetime.now(timezone.utc) > expires_at:
-        raise HTTPException(status_code=401, detail="OTP expired")
-
-    existing_user = await db.users.find_one({"email": email}, {"_id": 0})
-
-    if existing_user:
-        user_id = existing_user["user_id"]
-
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": {
-                "last_login": datetime.now(timezone.utc),
-                "phone": phone or existing_user.get("phone"),
-                "name": name or existing_user.get("name")
-            }}
-        )
-    else:
-        user_id = f"user_{uuid.uuid4().hex[:12]}"
-
-        await db.users.insert_one({
-            "user_id": user_id,
-            "email": email,
-            "phone": phone or None,
-            "name": name or email.split('@')[0],
-            "picture": None,
-            "created_at": datetime.now(timezone.utc),
-            "last_login": datetime.now(timezone.utc)
-        })
-
-    session_token = f"session_{uuid.uuid4().hex}"
-
-    await db.user_sessions.insert_one({
-        "user_id": user_id,
-        "session_token": session_token,
-        "created_at": datetime.now(timezone.utc),
-        "expires_at": datetime.now(timezone.utc) + timedelta(days=30)
-    })
-
-    response.set_cookie(
-        key="session_token",
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        path="/",
-        max_age=30 * 24 * 60 * 60
-    )
-
-    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    # ✅ create session token (adjust if needed)
+    session_token = str(uuid.uuid4())
 
     return {
-        **user_doc,
-        "session_token": session_token
+        "session_token": session_token,
+        "email": email
     }
 
 @api_router.get("/auth/me")
