@@ -513,7 +513,7 @@ if str(stored_otp).strip() != str(otp).strip():
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
     if datetime.now(timezone.utc) > expires_at:
-        await db.otp_codes.delete_many({"email": email})
+
         raise HTTPException(status_code=401, detail="OTP expired")
 
     await db.otp_codes.delete_many({"email": email})
