@@ -490,22 +490,20 @@ async def verify_otp(request: Request, response: Response):
         raise HTTPException(status_code=400, detail="Email and OTP required")
 
     stored = await db.otp_codes.find_one(
-    {"email": email},
-    sort=[("created_at", -1)]
-)
+        {"email": email},
+        sort=[("created_at", -1)]
+    )
 
-if not stored:
-    raise HTTPException(status_code=401, detail="No OTP found. Please request again.")
+    if not stored:
+        raise HTTPException(status_code=401, detail="No OTP found. Please request again.")
 
-stored_otp = str(stored.get("otp")).strip()
+    stored_otp = str(stored.get("otp")).strip()
 
-# ✅ DEBUG (leave this for now)
-print("Entered OTP:", otp)
-print("Stored OTP:", stored_otp)
+    print("Entered OTP:", otp)
+    print("Stored OTP:", stored_otp)
 
-# ✅ FIXED COMPARISON
-if str(stored_otp).strip() != str(otp).strip():
-    raise HTTPException(status_code=401, detail="Invalid OTP")
+    if stored_otp != otp:
+        raise HTTPException(status_code=401, detail="Invalid OTP")
 
     expires_at = stored.get("expires_at")
 
@@ -513,10 +511,7 @@ if str(stored_otp).strip() != str(otp).strip():
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
     if datetime.now(timezone.utc) > expires_at:
-
         raise HTTPException(status_code=401, detail="OTP expired")
-
-    
 
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
 
