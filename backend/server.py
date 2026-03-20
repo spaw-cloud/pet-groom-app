@@ -502,7 +502,7 @@ async def verify_otp(request: Request, response: Response):
     print("Entered OTP:", otp)
     print("Stored OTP:", stored_otp)
 
-    if stored_otp != otp:
+    if str(otp).strip() != str(stored_otp).strip():
         raise HTTPException(status_code=401, detail="Invalid OTP")
 
     expires_at = stored.get("expires_at")
