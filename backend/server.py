@@ -407,7 +407,7 @@ async def send_otp(request: Request):
         raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting a new OTP.")
 
     # Generate 6-digit OTP
-    otp_code = str(random.randint(100000, 999999))
+    otp = str(random.randint(100000, 999999))
 
     try:
         send_otp_email(email, otp_code)
