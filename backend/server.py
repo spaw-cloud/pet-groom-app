@@ -516,7 +516,7 @@ if str(stored_otp).strip() != str(otp).strip():
 
         raise HTTPException(status_code=401, detail="OTP expired")
 
-    await db.otp_codes.delete_many({"email": email})
+    
 
     existing_user = await db.users.find_one({"email": email}, {"_id": 0})
 
