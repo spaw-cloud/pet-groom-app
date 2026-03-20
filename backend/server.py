@@ -380,7 +380,6 @@ async def direct_login(request: Request, response: Response):
 
 @api_router.post("/auth/send-otp")
 async def send_otp(request: Request):
-    """Send OTP to email via Gmail SMTP"""
     body = await request.json()
     email = body.get('email', '').strip().lower()
 
@@ -390,42 +389,50 @@ async def send_otp(request: Request):
     if not SMTP_EMAIL or not SMTP_APP_PASSWORD:
         raise HTTPException(status_code=500, detail="Email service not configured")
 
-    # Rate limit: max 3 OTP sends per email in 10 minutes
+    # Rate limit
     ten_min_ago = datetime.now(timezone.utc) - timedelta(minutes=10)
     recent_count = await db.otp_requests.count_documents({
         "email": email, "created_at": {"$gte": ten_min_ago}
     })
     if recent_count >= 3:
-        raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait 10 minutes before trying again.")
+        raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait 10 minutes.")
 
-    # Cooldown: 60s between sends
+    # Cooldown
     one_min_ago = datetime.now(timezone.utc) - timedelta(seconds=60)
     last_request = await db.otp_requests.find_one(
-        {"email": email, "created_at": {"$gte": one_min_ago}}, {"_id": 0}
+        {"email": email, "created_at": {"$gte": one_min_ago}}
     )
     if last_request:
-        raise HTTPException(status_code=429, detail="Please wait 60 seconds before requesting a new OTP.")
+        raise HTTPException(status_code=429, detail="Wait 60 seconds before requesting again.")
 
-    # Generate 6-digit OTP
+    # ✅ Generate OTP (STRING)
     otp = str(random.randint(100000, 999999))
 
+    # ✅ SEND CORRECT OTP
     try:
-        send_otp_email(email, otp_code)
+        send_otp_email(email, otp)
     except Exception as e:
-        logger.error(f"Failed to send OTP email to {email}: {e}")
-        raise HTTPException(status_code=502, detail="Failed to send OTP email. Please try again.")
+        logger.error(f"Failed to send OTP email: {e}")
+        raise HTTPException(status_code=502, detail="Failed to send OTP")
 
-    # Store OTP in DB with 5-min expiry
+    # ✅ STORE SAME OTP
     await db.otp_codes.delete_many({"email": email})
     await db.otp_codes.insert_one({
         "email": email,
-        "otp": otp_code,
+        "otp": otp,  # ✅ FIXED
         "created_at": datetime.now(timezone.utc),
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5)
     })
+
     await db.otp_requests.insert_one({
-        "email": email, "created_at": datetime.now(timezone.utc)
+        "email": email,
+        "created_at": datetime.now(timezone.utc)
     })
+
+    return {
+        "success": True,
+        "message": "OTP sent to your email"
+    }
 
     remaining = 3 - recent_count - 1
     logger.info(f"OTP sent to {email}")
