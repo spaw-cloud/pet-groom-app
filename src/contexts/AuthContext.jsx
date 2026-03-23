@@ -43,6 +43,7 @@ export function AuthProvider({ children }) {
 };
   
   const verifyOTP = async (email, otp, phone, name) => {
+  console.log("SENDING TO BACKEND:", otp);
   const cleanOtp = String(otp).trim();
 
   try {
