@@ -507,11 +507,11 @@ print("Entered OTP:", otp)
 print("Stored OTP:", stored_otp)
 
     # ⏳ Expiry check
-    if record.get("expires_at") < datetime.now(timezone.utc):
+if record.get("expires_at") < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="OTP expired")
 
     # ❌ MISMATCH
-    if otp != stored_otp:
+if otp != stored_otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
     # ✅ SUCCESS
