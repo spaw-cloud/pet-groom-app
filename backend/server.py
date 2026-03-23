@@ -442,7 +442,7 @@ async def send_otp(request: Request):
     logger.info(f"OTP sent to {email}")
     return {"success": True, "message": "OTP sent to your email", "attempts_remaining": remaining}
 
-@aapi_router.post("/auth/resend-otp")
+@api_router.post("/auth/resend-otp")
 async def resend_otp(request: Request):
     body = await request.json()
     email = body.get('email', '').strip().lower()
