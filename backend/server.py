@@ -26,13 +26,10 @@ db = client[DB_NAME]
 # ================== APP ==================
 app = FastAPI()
 
-# ✅ CORRECT CORS (VERY IMPORTANT)
+# 🔥 FIXED CORS (THIS IS THE KEY FIX)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://pet-groom-app.vercel.app",
-        "http://localhost:5173"
-    ],
+    allow_origins=["*"],  # ✅ allow all (fixes your issue immediately)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,6 +69,8 @@ async def send_otp(request: Request):
 
     otp = str(random.randint(100000, 999999))
 
+    print("GENERATED OTP:", otp)
+
     # send email
     send_otp_email(email, otp)
 
@@ -83,8 +82,6 @@ async def send_otp(request: Request):
         "otp": otp,
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5)
     })
-
-    print("OTP SENT:", otp)
 
     return {"success": True}
 
@@ -107,7 +104,6 @@ async def verify_otp(request: Request):
     stored_otp = str(record.get("otp")).strip()
     expires_at = record.get("expires_at")
 
-    # ✅ FIX datetime issue
     if isinstance(expires_at, str):
         expires_at = datetime.fromisoformat(expires_at)
 
@@ -120,7 +116,6 @@ async def verify_otp(request: Request):
     if otp != stored_otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    # delete after success
     await db.otp_codes.delete_many({"email": email})
 
     return {
