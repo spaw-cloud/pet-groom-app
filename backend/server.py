@@ -512,16 +512,16 @@ if record.get("expires_at") < datetime.now(timezone.utc):
 
     # ❌ MISMATCH
 if otp != stored_otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
+    raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    # ✅ SUCCESS
-    await db.otp_codes.delete_many({"email": email})
+# ✅ SAME LEVEL (not inside if)
+await db.otp_codes.delete_many({"email": email})
 
-    session_token = str(uuid.uuid4())
+session_token = str(uuid.uuid4())
 
-    return {
-        "session_token": session_token,
-        "email": email
+return {
+    "session_token": session_token,
+    "email": email
     }
 
 @api_router.get("/auth/me")
