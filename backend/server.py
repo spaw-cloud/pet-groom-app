@@ -59,7 +59,7 @@ def send_otp_email(to_email: str, otp: str):
         raise HTTPException(status_code=500, detail="Email failed")
 
 # ================== SEND OTP ==================
-@router.post("/auth/send-otp")
+@rrouter.post("/auth/send-otp")
 async def send_otp(request: Request):
     body = await request.json()
     email = body.get("email", "").strip().lower()
@@ -69,19 +69,23 @@ async def send_otp(request: Request):
 
     otp = str(random.randint(100000, 999999))
 
-    print("GENERATED OTP:", otp)
+    print("GENERATED OTP:", otp)  # debug
 
     # send email
     send_otp_email(email, otp)
 
-    # store in DB
-    await db.otp_codes.delete_many({"email": email})
-
-    await db.otp_codes.insert_one({
-        "email": email,
-        "otp": otp,
-        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5)
-    })
+    # ✅ FIXED DB LOGIC (NO DUPLICATES / NO MISMATCH)
+    await db.otp_codes.update_one(
+        {"email": email},
+        {
+            "$set": {
+                "email": email,
+                "otp": otp,
+                "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5)
+            }
+        },
+        upsert=True
+    )
 
     return {"success": True}
 
