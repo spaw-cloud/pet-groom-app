@@ -30,20 +30,20 @@ db = client[os.environ['DB_NAME']]
 # Create the main app without a prefix
 app = FastAPI()
 
-# ✅ ADD CORS HERE (VERY IMPORTANT)
+# ✅ CORS (PUT THIS IMMEDIATELY AFTER app)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://pet-groom-app.vercel.app",  # your frontend
-        "http://localhost:5173",             # local dev
-    ],
+    allow_origins=["*"],  # 🔥 TEMP allow all (to fix immediately)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Create a router with the /api prefix
+# ✅ Router
 api_router = APIRouter(prefix="/api")
+
+# 🔥 VERY IMPORTANT (MOST PEOPLE MISS THIS)
+app.include_router(api_router)
 
 # Configure logging
 logging.basicConfig(
