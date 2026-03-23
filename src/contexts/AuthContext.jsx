@@ -42,21 +42,13 @@ export function AuthProvider({ children }) {
   }
 };
   
-  const verifyOTP = (email, otp) => {
-  return axios.post(`${import.meta.env.VITE_API_URL}/api/auth/verify-otp`, {
-    email,
-    otp
-  });
-};
-
+  const verifyOTP = async (email, otp) => {
   try {
     const response = await axios.post(
-      `${BACKEND_URL}/api/auth/verify-otp`,
+      `${import.meta.env.VITE_API_URL}/api/auth/verify-otp`,
       {
-        email,
-        otp: cleanOtp,
-        phone,
-        name,
+        email: email,
+        otp: otp,
       }
     );
 
@@ -66,12 +58,17 @@ export function AuthProvider({ children }) {
       throw new Error("No session token received");
     }
 
+    // ✅ Store session
     localStorage.setItem("session_token", sessionToken);
 
+    // ✅ Extract user data
     const { session_token, ...userData } = response.data;
 
+    // ✅ Set state
     setUser(userData);
     setToken(sessionToken);
+
+    return response.data;
 
   } catch (error) {
     console.error("OTP VERIFY ERROR:", error);
