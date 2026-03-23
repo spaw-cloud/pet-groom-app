@@ -493,8 +493,8 @@ async def verify_otp(request: Request):
 
     # 🔍 THIS IS THE BLOCK YOU NEED 👇
     record = await db.otp_codes.find_one(
-        {"email": email},
-        sort=[("created_at", -1)]   # 👈 THIS LINE)]
+    {"email": email},
+    sort=[("_id", -1)]   # 👈 THIS LINE)]
     )
 
     if not record:
