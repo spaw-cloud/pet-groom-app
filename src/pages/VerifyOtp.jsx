@@ -39,18 +39,30 @@ export default function VerifyOtp() {
   };
 
   const handleVerifyOTP = async (otpValue) => {
-    const fullOtp = otpValue || otp.join('');
-console.log("OTP BEING SENT:", fullOtp);
-    if (fullOtp.length !== 6) { setErrorMsg('Please enter all 6 digits'); return; }
-    try {
-      setVerifying(true); setErrorMsg('');
-      await verifyOTP(email, fullOtp));
-      navigate('/tabs', { replace: true });
-    } catch (error) {
-      setErrorMsg(error?.response?.data?.detail || 'Invalid OTP. Please try again.');
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-    } finally { setVerifying(false); }
+  const fullOtp = otpValue || otp.join('');
+  console.log("OTP BEING SENT:", fullOtp);
+
+  if (fullOtp.length !== 6) {
+    setErrorMsg('Please enter all 6 digits');
+    return;
+  }
+
+  try {
+    setVerifying(true);
+    setErrorMsg('');
+
+    // ✅ FIXED LINE
+    await verifyOTP(email, fullOtp);
+
+    navigate('/tabs', { replace: true });
+
+  } catch (error) {
+    setErrorMsg(error?.response?.data?.detail || 'Invalid OTP. Please try again.');
+    setOtp(['', '', '', '', '', '']);
+    inputRefs.current[0]?.focus();
+  } finally {
+    setVerifying(false);
+  }
   };
 
   return (
