@@ -42,9 +42,12 @@ export function AuthProvider({ children }) {
   }
 };
   
-  const verifyOTP = async (email, otp, phone, name) => {
-  console.log("SENDING TO BACKEND:", otp);
-  const cleanOtp = String(otp).trim();
+  const verifyOTP = (email, otp) => {
+  return axios.post(`${import.meta.env.VITE_API_URL}/api/auth/verify-otp`, {
+    email: email,
+    otp: otp
+  });
+};
 
   try {
     const response = await axios.post(
