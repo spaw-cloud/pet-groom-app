@@ -40,6 +40,7 @@ export default function VerifyOtp() {
 
   const handleVerifyOTP = async (otpValue) => {
     const fullOtp = otpValue || otp.join('');
+console.log("OTP BEING SENT:", fullOtp);
     if (fullOtp.length !== 6) { setErrorMsg('Please enter all 6 digits'); return; }
     try {
       setVerifying(true); setErrorMsg('');
