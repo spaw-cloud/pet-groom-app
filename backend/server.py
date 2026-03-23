@@ -483,46 +483,39 @@ async def resend_otp(request: Request):
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(request: Request):
-
     body = await request.json()
+
     email = body.get("email", "").strip().lower()
     otp = str(body.get("otp", "")).strip()
 
     if not email or not otp:
         raise HTTPException(status_code=400, detail="Email and OTP required")
 
-    # 🔍 THIS IS THE BLOCK YOU NEED 👇
     record = await db.otp_codes.find_one(
-    {"email": email},
-    sort=[("_id", -1)]
-)
+        {"email": email},
+        sort=[("_id", -1)]
+    )
 
-if not record:
-    raise HTTPException(status_code=400, detail="No OTP found")
+    if not record:
+        raise HTTPException(status_code=400, detail="No OTP found")
 
-stored_otp = str(record.get("otp")).strip()
+    stored_otp = str(record.get("otp")).strip()
 
-print("Full record:", record)
-print("Entered OTP:", otp)
-print("Stored OTP:", stored_otp)
-
-    # ⏳ Expiry check
-if record.get("expires_at") < datetime.now(timezone.utc):
+    if record.get("expires_at") < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="OTP expired")
 
-    # ❌ MISMATCH
-if otp != stored_otp:
-    raise HTTPException(status_code=400, detail="Invalid OTP")
+    if otp != stored_otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
 
-# ✅ SUCCESS
-await db.otp_codes.delete_many({"email": email})
+    # ✅ MUST BE INSIDE FUNCTION
+    await db.otp_codes.delete_many({"email": email})
 
-session_token = str(uuid.uuid4())
+    session_token = str(uuid.uuid4())
 
-return {
-    "session_token": session_token,
-    "email": email
-}
+    return {
+        "session_token": session_token,
+        "email": email
+    }
 
 @api_router.get("/auth/me")
 async def get_me(request: Request, session_token: Optional[str] = Cookie(None)):
