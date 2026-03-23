@@ -59,7 +59,7 @@ def send_otp_email(to_email: str, otp: str):
         raise HTTPException(status_code=500, detail="Email failed")
 
 # ================== SEND OTP ==================
-@rrouter.post("/auth/send-otp")
+@router.post("/auth/send-otp")
 async def send_otp(request: Request):
     body = await request.json()
     email = body.get("email", "").strip().lower()
