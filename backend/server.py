@@ -378,7 +378,7 @@ async def direct_login(request: Request, response: Response):
         "session_token": session_token
     }
 
-@aapi_router.post("/auth/send-otp")
+@api_router.post("/auth/send-otp")
 async def send_otp(request: Request):
     body = await request.json()
     email = body.get('email', '').strip().lower()
