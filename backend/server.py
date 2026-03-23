@@ -483,6 +483,7 @@ async def resend_otp(request: Request):
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(request: Request):
+
     body = await request.json()
     email = body.get("email", "").strip().lower()
     otp = str(body.get("otp", "")).strip()
@@ -490,10 +491,10 @@ async def verify_otp(request: Request):
     if not email or not otp:
         raise HTTPException(status_code=400, detail="Email and OTP required")
 
-    # 🔍 ALWAYS GET LATEST OTP
+    # 🔍 THIS IS THE BLOCK YOU NEED 👇
     record = await db.otp_codes.find_one(
-    {"email": email},
-    sort=[("_id", -1)]
+        {"email": email},
+        sort=[("created_at", -1)]   # 👈 THIS LINE)]
     )
 
     if not record:
