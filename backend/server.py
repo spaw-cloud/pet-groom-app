@@ -494,16 +494,17 @@ async def verify_otp(request: Request):
     # 🔍 THIS IS THE BLOCK YOU NEED 👇
     record = await db.otp_codes.find_one(
     {"email": email},
-    sort=[("_id", -1)]   # 👈 THIS LINE)]
-    )
+    sort=[("_id", -1)]
+)
 
-    if not record:
-        raise HTTPException(status_code=400, detail="No OTP found")
+if not record:
+    raise HTTPException(status_code=400, detail="No OTP found")
 
-    stored_otp = str(record.get("otp")).strip()
+stored_otp = str(record.get("otp")).strip()
 
-    print("Entered OTP:", otp)
-    print("Stored OTP:", stored_otp)
+print("Full record:", record)
+print("Entered OTP:", otp)
+print("Stored OTP:", stored_otp)
 
     # ⏳ Expiry check
     if record.get("expires_at") < datetime.now(timezone.utc):
