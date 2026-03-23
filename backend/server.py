@@ -378,7 +378,7 @@ async def direct_login(request: Request, response: Response):
         "session_token": session_token
     }
 
-@api_router.post("/auth/send-otp")
+@aapi_router.post("/auth/send-otp")
 async def send_otp(request: Request):
     body = await request.json()
     email = body.get('email', '').strip().lower()
@@ -389,37 +389,41 @@ async def send_otp(request: Request):
     if not SMTP_EMAIL or not SMTP_APP_PASSWORD:
         raise HTTPException(status_code=500, detail="Email service not configured")
 
-    # Rate limit
+    # Rate limit (max 3 in 10 mins)
     ten_min_ago = datetime.now(timezone.utc) - timedelta(minutes=10)
     recent_count = await db.otp_requests.count_documents({
-        "email": email, "created_at": {"$gte": ten_min_ago}
+        "email": email,
+        "created_at": {"$gte": ten_min_ago}
     })
+
     if recent_count >= 3:
-        raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait 10 minutes.")
+        raise HTTPException(status_code=429, detail="Too many OTP requests. Try later.")
 
-    # Cooldown
+    # Cooldown (60 sec)
     one_min_ago = datetime.now(timezone.utc) - timedelta(seconds=60)
-    last_request = await db.otp_requests.find_one(
-        {"email": email, "created_at": {"$gte": one_min_ago}}
-    )
-    if last_request:
-        raise HTTPException(status_code=429, detail="Wait 60 seconds before requesting again.")
+    last_request = await db.otp_requests.find_one({
+        "email": email,
+        "created_at": {"$gte": one_min_ago}
+    })
 
-    # ✅ Generate OTP (STRING)
+    if last_request:
+        raise HTTPException(status_code=429, detail="Wait 60 seconds before retrying.")
+
+    # Generate OTP
     otp = str(random.randint(100000, 999999))
 
-    # ✅ SEND CORRECT OTP
+    # Send Email
     try:
         send_otp_email(email, otp)
     except Exception as e:
-        logger.error(f"Failed to send OTP email: {e}")
-        raise HTTPException(status_code=502, detail="Failed to send OTP")
+        logger.error(f"OTP send failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
 
-    # ✅ STORE SAME OTP
+    # Store OTP
     await db.otp_codes.delete_many({"email": email})
     await db.otp_codes.insert_one({
         "email": email,
-        "otp": otp,  # ✅ FIXED
+        "otp": otp,
         "created_at": datetime.now(timezone.utc),
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5)
     })
@@ -431,54 +435,66 @@ async def send_otp(request: Request):
 
     return {
         "success": True,
-        "message": "OTP sent to your email"
+        "message": "OTP sent successfully"
     }
 
     remaining = 3 - recent_count - 1
     logger.info(f"OTP sent to {email}")
     return {"success": True, "message": "OTP sent to your email", "attempts_remaining": remaining}
 
-@api_router.post("/auth/resend-otp")
+@aapi_router.post("/auth/resend-otp")
 async def resend_otp(request: Request):
-    """Resend OTP to email"""
     body = await request.json()
     email = body.get('email', '').strip().lower()
 
     if not email or '@' not in email:
-        raise HTTPException(status_code=400, detail="Valid email address required")
+        raise HTTPException(status_code=400, detail="Valid email required")
 
     # Rate limit
     ten_min_ago = datetime.now(timezone.utc) - timedelta(minutes=10)
     recent_count = await db.otp_requests.count_documents({
-        "email": email, "created_at": {"$gte": ten_min_ago}
+        "email": email,
+        "created_at": {"$gte": ten_min_ago}
     })
+
     if recent_count >= 3:
-        raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait 10 minutes.")
+        raise HTTPException(status_code=429, detail="Too many requests")
 
+    # Cooldown
     one_min_ago = datetime.now(timezone.utc) - timedelta(seconds=60)
-    last_request = await db.otp_requests.find_one(
-        {"email": email, "created_at": {"$gte": one_min_ago}}, {"_id": 0}
-    )
-    if last_request:
-        raise HTTPException(status_code=429, detail="Please wait 60 seconds before resending.")
+    last_request = await db.otp_requests.find_one({
+        "email": email,
+        "created_at": {"$gte": one_min_ago}
+    })
 
-    otp_code = str(random.randint(100000, 999999))
+    if last_request:
+        raise HTTPException(status_code=429, detail="Wait before retrying")
+
+    otp = str(random.randint(100000, 999999))
 
     try:
-        send_otp_email(email, otp_code)
+        send_otp_email(email, otp)
     except Exception as e:
-        logger.error(f"Failed to resend OTP email to {email}: {e}")
-        raise HTTPException(status_code=502, detail="Failed to send OTP email.")
+        logger.error(f"Resend OTP failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to resend OTP")
 
     await db.otp_codes.delete_many({"email": email})
     await db.otp_codes.insert_one({
-        "email": email, "otp": otp_code,
+        "email": email,
+        "otp": otp,
         "created_at": datetime.now(timezone.utc),
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5)
     })
+
     await db.otp_requests.insert_one({
-        "email": email, "created_at": datetime.now(timezone.utc)
+        "email": email,
+        "created_at": datetime.now(timezone.utc)
     })
+
+    return {
+        "success": True,
+        "message": "OTP resent successfully"
+    }
     
 
 @api_router.post("/auth/verify-otp")
@@ -499,21 +515,48 @@ async def verify_otp(request: Request):
     if not record:
         raise HTTPException(status_code=400, detail="No OTP found")
 
-    stored_otp = str(record.get("otp")).strip()
+    stored_otp = str(record.get("otp", "")).strip()
+    expires_at = record.get("expires_at")
 
-    if record.get("expires_at") < datetime.now(timezone.utc):
+    if not expires_at:
+        raise HTTPException(status_code=400, detail="Invalid OTP record")
+
+    if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="OTP expired")
 
     if otp != stored_otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    # ✅ MUST BE INSIDE FUNCTION
+    # Delete OTP after success
     await db.otp_codes.delete_many({"email": email})
 
-    session_token = str(uuid.uuid4())
+    # Create or get user
+    existing_user = await db.users.find_one({"email": email})
+
+    if not existing_user:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "user_id": user_id,
+            "email": email,
+            "name": "User",
+            "created_at": datetime.now(timezone.utc)
+        })
+    else:
+        user_id = existing_user["user_id"]
+
+    # Create session
+    session_token = f"session_{uuid.uuid4().hex}"
+
+    await db.user_sessions.insert_one({
+        "session_token": session_token,
+        "user_id": user_id,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=30)
+    })
 
     return {
         "session_token": session_token,
+        "user_id": user_id,
         "email": email
     }
 
