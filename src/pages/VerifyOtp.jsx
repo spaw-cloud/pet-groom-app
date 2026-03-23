@@ -44,7 +44,7 @@ console.log("OTP BEING SENT:", fullOtp);
     if (fullOtp.length !== 6) { setErrorMsg('Please enter all 6 digits'); return; }
     try {
       setVerifying(true); setErrorMsg('');
-      await verifyOTP(email, fullOtp, phone, userName);
+      await verifyOTP(email, fullOtp));
       navigate('/tabs', { replace: true });
     } catch (error) {
       setErrorMsg(error?.response?.data?.detail || 'Invalid OTP. Please try again.');
