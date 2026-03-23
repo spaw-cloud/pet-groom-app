@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { IoArrowBack, IoShieldCheckmark, IoAlertCircle } from 'react-icons/io5';
 
 export default function VerifyOtp() {
-  const { verifyOTP, resendOTP } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,10 +46,9 @@ export default function VerifyOtp() {
     }
   };
 
+  // ✅ VERIFY OTP (DIRECT API CALL)
   const handleVerifyOTP = async () => {
     const fullOtp = otp.join('').trim();
-
-    console.log("OTP BEING SENT:", fullOtp);
 
     if (fullOtp.length !== 6) {
       setErrorMsg('Please enter all 6 digits');
@@ -62,24 +59,70 @@ export default function VerifyOtp() {
       setVerifying(true);
       setErrorMsg('');
 
-      const res = await verifyOTP(email, fullOtp);
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/verify-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            otp: fullOtp,
+          }),
+        }
+      );
 
-      console.log("VERIFY RESPONSE:", res);
+      const data = await res.json();
 
+      if (!res.ok) {
+        throw new Error(data.detail || "Invalid OTP");
+      }
+
+      console.log("OTP VERIFIED:", data);
+
+      // ✅ SUCCESS → go to app
       navigate('/tabs', { replace: true });
 
     } catch (error) {
       console.error("VERIFY ERROR:", error);
 
-      setErrorMsg(
-        error?.response?.data?.detail || 'Invalid OTP. Please try again.'
-      );
+      setErrorMsg(error.message || "Invalid OTP");
 
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
 
     } finally {
       setVerifying(false);
+    }
+  };
+
+  // ✅ RESEND OTP (DIRECT API CALL)
+  const handleResendOTP = async () => {
+    try {
+      setResending(true);
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/send-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to resend OTP");
+      }
+
+      setResendTimer(60);
+
+    } catch (err) {
+      setErrorMsg("Failed to resend OTP");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -144,17 +187,7 @@ export default function VerifyOtp() {
 
         <button
           disabled={resendTimer > 0 || resending}
-          onClick={async () => {
-            try {
-              setResending(true);
-              await resendOTP(email);
-              setResendTimer(60);
-            } catch (err) {
-              setErrorMsg('Failed to resend OTP');
-            } finally {
-              setResending(false);
-            }
-          }}
+          onClick={handleResendOTP}
         >
           {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
         </button>
