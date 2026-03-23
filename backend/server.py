@@ -492,8 +492,8 @@ async def verify_otp(request: Request):
 
     # 🔍 ALWAYS GET LATEST OTP
     record = await db.otp_codes.find_one(
-        {"email": email},
-        sort=[("created_at", -1)]
+    {"email": email},
+    sort=[("_id", -1)]
     )
 
     if not record:
