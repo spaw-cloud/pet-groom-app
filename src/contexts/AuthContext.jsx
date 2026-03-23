@@ -1,8 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
-// ✅ Use ONE env variable everywhere
-const API_URL = import.meta.env.VITE_API_URL;
+// ✅ Safe API URL (fallback added)
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://pet-groom-app.onrender.com";
+
+// 🔥 DEBUG (remove later)
+console.log("API_URL:", API_URL);
 
 const AuthContext = createContext(undefined);
 
@@ -28,9 +33,8 @@ export function AuthProvider({ children }) {
       setToken(savedToken);
 
     } catch (error) {
-      if (error?.response?.status === 401) {
-        localStorage.removeItem('session_token');
-      }
+      console.error("CHECK AUTH ERROR:", error);
+      localStorage.removeItem('session_token');
     } finally {
       setLoading(false);
     }
@@ -53,12 +57,11 @@ export function AuthProvider({ children }) {
   // ================= VERIFY OTP =================
   const verifyOTP = async (email, otp) => {
     try {
+      console.log("Sending OTP to:", `${API_URL}/api/auth/verify-otp`);
+
       const response = await axios.post(
         `${API_URL}/api/auth/verify-otp`,
-        {
-          email,
-          otp,
-        }
+        { email, otp }
       );
 
       const sessionToken = response.data.session_token;
@@ -67,10 +70,8 @@ export function AuthProvider({ children }) {
         throw new Error("No session token received");
       }
 
-      // ✅ Store session
       localStorage.setItem("session_token", sessionToken);
 
-      // ✅ Extract user data
       const { session_token, ...userData } = response.data;
 
       setUser(userData);
@@ -106,7 +107,6 @@ export function AuthProvider({ children }) {
           { headers: { Authorization: `Bearer ${t}` } }
         );
       }
-
     } catch (error) {
       console.error("LOGOUT ERROR:", error);
     }
