@@ -44,8 +44,8 @@ export function AuthProvider({ children }) {
   
   const verifyOTP = (email, otp) => {
   return axios.post(`${import.meta.env.VITE_API_URL}/api/auth/verify-otp`, {
-    email: email,
-    otp: otp
+    email,
+    otp
   });
 };
 
