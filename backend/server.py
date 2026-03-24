@@ -47,48 +47,21 @@ db = client[DB_NAME]
 api_router = APIRouter(prefix="/api")
 
 # ================== SEND OTP ==================
-@api_router.post("/auth/send-otp")
+@router.post("/auth/send-otp")
 async def send_otp(request: Request):
-    data = await request.json()
-    email = data.get("email")
+    import random
 
-    if not email:
-        raise HTTPException(status_code=400, detail="Email is required")
+    body = await request.json()
+    email = body.get("email")
 
     otp = str(random.randint(100000, 999999))
 
-    # delete old OTPs
-    await db.otp_codes.delete_many({"email": email})
+    print("OTP:", otp)
 
-    # save new OTP
-    await db.otp_codes.insert_one({
-        "email": email,
-        "otp": otp,
-        "created_at": datetime.now(timezone.utc)
-    })
-
-    # ================== EMAIL SENDING ==================
-    if os.getenv("SKIP_EMAIL") == "1":
-        print(f"🔐 OTP for {email}: {otp}")
-    else:
-        try:
-            msg = MIMEMultipart()
-            msg["From"] = SMTP_EMAIL
-            msg["To"] = email
-            msg["Subject"] = "Your OTP Code"
-
-            msg.attach(MIMEText(f"Your OTP is: {otp}", "plain"))
-
-            server = smtplib.SMTP("smtp.gmail.com", 587)
-            server.starttls()
-            server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
-            server.send_message(msg)
-            server.quit()
-
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Email failed: {str(e)}")
-
-    return {"message": "OTP sent successfully"}
+    return {
+        "message": "OTP generated successfully",
+        "otp": otp
+}
 
 # ================== VERIFY OTP ==================
 @api_router.post("/auth/verify-otp")
