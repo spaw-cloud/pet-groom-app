@@ -1,113 +1,54 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime, timezone, timedelta
-import os
 import random
 import smtplib
+import os
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from fastapi import APIRouter, HTTPException, Request
+from datetime import datetime, timedelta
 
-app = FastAPI()
 router = APIRouter()
 
-# ------------------ CORS ------------------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Store OTPs (temporary)
+otp_store = {}
 
-# ------------------ DATABASE ------------------
-MONGO_URL = os.getenv("MONGO_URL")
-client = AsyncIOMotorClient(MONGO_URL)
-db = client["pet_groom"]
-
-# ------------------ EMAIL CONFIG ------------------
+# 🔐 ENV VARIABLES (SET IN RENDER)
 EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
 
-def send_email(to_email, otp):
-    try:
-        msg = MIMEMultipart()
-        msg["From"] = EMAIL_USER
-        msg["To"] = to_email
-        msg["Subject"] = "Your OTP Code"
 
-        body = f"Your OTP is {otp}"
-        msg.attach(MIMEText(body, "plain"))
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.send_message(msg)
-        server.quit()
-    except Exception as e:
-        print("Email error:", e)
-
-# ------------------ SEND OTP ------------------
 @router.post("/auth/send-otp")
 async def send_otp(request: Request):
-    try:
-        body = await request.json()
-    except:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-
-    email = str(body.get("email", "")).strip().lower()
+    body = await request.json()
+    email = body.get("email", "").strip().lower()
 
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="Valid email required")
 
+    # 🔢 Generate OTP
     otp = str(random.randint(100000, 999999))
 
-    await db.otps.update_one(
-        {"email": email},
-        {
-            "$set": {
-                "otp": otp,
-                "expires": datetime.now(timezone.utc) + timedelta(minutes=5)
-            }
-        },
-        upsert=True
-    )
-
-    send_email(email, otp)
-
-    return {"message": "OTP sent"}
-
-# ------------------ VERIFY OTP ------------------
-@router.post("/auth/verify-otp")
-async def verify_otp(request: Request):
-    try:
-        body = await request.json()
-    except:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-
-    email = str(body.get("email", "")).strip().lower()
-    otp = str(body.get("otp", "")).strip()
-
-    record = await db.otps.find_one({"email": email})
-
-    if not record:
-        raise HTTPException(status_code=400, detail="OTP not found")
-
-    if record["otp"] != otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-
-    if record["expires"] < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="OTP expired")
-
-    return {
-        "message": "OTP verified successfully",
-        "user": {"email": email}
+    # Save OTP (valid for 5 minutes)
+    otp_store[email] = {
+        "otp": otp,
+        "expires": datetime.utcnow() + timedelta(minutes=5)
     }
 
-# ------------------ ROUTER ------------------
-app.include_router(router, prefix="/api")
+    try:
+        msg = MIMEText(f"Your OTP is: {otp}")
+        msg["Subject"] = "Your OTP Code"
+        msg["From"] = EMAIL_USER
+        msg["To"] = email
 
-# ------------------ ROOT ------------------
-@app.get("/")
-def root():
-    return {"status": "Backend running"}
+        # 🔥 Gmail SMTP
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.sendmail(EMAIL_USER, email, msg.as_string())
+        server.quit()
+
+        print("✅ OTP sent:", otp)
+
+    except Exception as e:
+        print("❌ Email error:", str(e))
+        raise HTTPException(status_code=500, detail="Failed to send email")
+
+    return {"message": "OTP sent successfully"}
