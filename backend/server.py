@@ -1,47 +1,66 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 import os
 import random
-from dotenv import load_dotenv
-import uvicorn
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import uuid
 
-# ================== LOAD ENV ==================
-load_dotenv()
+# ================= CONFIG =================
 
 MONGO_URL = os.getenv("MONGO_URL")
-DB_NAME = os.getenv("DB_NAME")
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
-# ================== APP INIT ==================
+# ================= APP =================
+
 app = FastAPI()
+router = APIRouter()
 
-# ✅ ROOT ROUTE
-@app.get("/")
-def root():
-    return {"message": "Backend is running successfully 🚀"}
-
-# ================== CORS ==================
+# ✅ CORS FIX (VERY IMPORTANT)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # allow all for now
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ================== DATABASE ==================
-if not MONGO_URL:
-    raise Exception("❌ MONGO_URL is missing in .env")
+# ================= DATABASE =================
 
 client = AsyncIOMotorClient(MONGO_URL)
-db = client[DB_NAME]
+db = client["spaw_db"]
 
-# ================== ROUTER ==================
-api_router = APIRouter(prefix="/api")
+# ================= EMAIL FUNCTION =================
 
-# ================== SEND OTP ==================
-@api_router.post("/auth/send-otp")
+def send_email(to_email, otp):
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = SMTP_EMAIL
+        msg["To"] = to_email
+        msg["Subject"] = "Your OTP Code"
+
+        body = f"Your OTP is: {otp}"
+        msg.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
+        server.quit()
+
+        print("✅ Email sent")
+
+    except Exception as e:
+        print("❌ Email error:", str(e))
+
+
+# ================= SEND OTP =================
+
+@router.post("/api/auth/send-otp")
 async def send_otp(request: Request):
     body = await request.json()
     email = body.get("email")
@@ -51,50 +70,79 @@ async def send_otp(request: Request):
 
     otp = str(random.randint(100000, 999999))
 
-    # save OTP in DB
+    # delete old OTP
     await db.otp_codes.delete_many({"email": email})
+
+    # store OTP
     await db.otp_codes.insert_one({
         "email": email,
         "otp": otp,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.utcnow()
     })
 
-    print("OTP:", otp)
+    # send email
+    send_email(email, otp)
 
-    return {
-        "message": "OTP generated successfully",
-        "otp": otp   # ⚠️ remove this later in production
-    }
+    print("OTP:", otp)  # for debugging
 
-# ================== VERIFY OTP ==================
-@api_router.post("/auth/verify-otp")
+    return {"message": "OTP generated successfully"}
+
+
+# ================= VERIFY OTP =================
+
+@router.post("/api/auth/verify-otp")
 async def verify_otp(request: Request):
-    data = await request.json()
-    email = data.get("email")
-    otp = data.get("otp")
+    body = await request.json()
+    email = body.get("email")
+    otp = body.get("otp")
 
     if not email or not otp:
-        raise HTTPException(status_code=400, detail="Email and OTP required")
+        raise HTTPException(status_code=400, detail="Missing email or OTP")
 
     record = await db.otp_codes.find_one({"email": email})
 
     if not record:
         raise HTTPException(status_code=400, detail="OTP not found")
 
-    if str(record["otp"]) != str(otp):
+    if record["otp"] != otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    if datetime.now(timezone.utc) - record["created_at"] > timedelta(minutes=5):
-        raise HTTPException(status_code=400, detail="OTP expired")
-
+    # delete OTP after use
     await db.otp_codes.delete_many({"email": email})
 
-    return {"message": "OTP verified successfully"}
+    token = str(uuid.uuid4())
 
-# ================== INCLUDE ROUTER ==================
-app.include_router(api_router)
+    return {
+        "session_token": token,
+        "user": {"email": email}
+    }
 
-# ================== RUN ==================
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("server:app", host="0.0.0.0", port=port)
+
+# ================= LOGIN =================
+
+@router.post("/api/auth/login")
+async def login(request: Request):
+    body = await request.json()
+    email = body.get("email")
+
+    # simulate user not found → trigger OTP
+    raise HTTPException(status_code=404, detail="User not found")
+
+
+# ================= ME =================
+
+@router.get("/api/auth/me")
+async def get_me():
+    return {"email": "test@example.com"}
+
+
+# ================= LOGOUT =================
+
+@router.post("/api/auth/logout")
+async def logout():
+    return {"message": "Logged out"}
+
+
+# ================= REGISTER ROUTES =================
+
+app.include_router(router)
