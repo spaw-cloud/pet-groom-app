@@ -1,55 +1,29 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import axios from 'axios';
 
-// ✅ Safe API URL (fallback added)
+// ✅ API URL
 const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://pet-groom-app.onrender.com";
-
-// 🔥 DEBUG (remove later)
-console.log("API_URL:", API_URL);
 
 const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // ================= CHECK AUTH =================
-  const checkAuth = async () => {
-    try {
-      const savedToken = localStorage.getItem('session_token');
-      if (!savedToken) {
-        setLoading(false);
-        return;
-      }
-
-      const response = await axios.get(`${API_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${savedToken}` },
-      });
-
-      setUser(response.data);
-      setToken(savedToken);
-
-    } catch (error) {
-      console.error("CHECK AUTH ERROR:", error);
-      localStorage.removeItem('session_token');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  const [loading, setLoading] = useState(false);
 
   // ================= SEND OTP =================
   const sendOTP = async (email) => {
     try {
-      await axios.post(`${API_URL}/api/auth/send-otp`, { email });
+      const res = await axios.post(`${API_URL}/api/auth/send-otp`, {
+        email: email
+      });
+
+      console.log("OTP SENT:", res.data);
+      return res.data;
+
     } catch (error) {
-      console.error("SEND OTP ERROR:", error);
+      console.error("SEND OTP ERROR:", error.response?.data || error);
       throw error;
     }
   };
@@ -57,81 +31,37 @@ export function AuthProvider({ children }) {
   // ================= VERIFY OTP =================
   const verifyOTP = async (email, otp) => {
     try {
-      console.log("Sending OTP to:", `${API_URL}/api/auth/verify-otp`);
+      const res = await axios.post(`${API_URL}/api/auth/verify-otp`, {
+        email: email,
+        otp: otp
+      });
 
-      const response = await axios.post(
-        `${API_URL}/api/auth/verify-otp`,
-        { email, otp }
-      );
+      console.log("OTP VERIFIED:", res.data);
 
-      const sessionToken = response.data.session_token;
+      // ✅ since backend doesn't return token, just mark user as logged in
+      setUser({ email });
 
-      if (!sessionToken) {
-        throw new Error("No session token received");
-      }
-
-      localStorage.setItem("session_token", sessionToken);
-
-      const { session_token, ...userData } = response.data;
-
-      setUser(userData);
-      setToken(sessionToken);
-
-      return response.data;
+      return res.data;
 
     } catch (error) {
-      console.error("OTP VERIFY ERROR:", error);
-      throw error;
-    }
-  };
-
-  // ================= RESEND OTP =================
-  const resendOTP = async (email) => {
-    try {
-      await axios.post(`${API_URL}/api/auth/resend-otp`, { email });
-    } catch (error) {
-      console.error("RESEND OTP ERROR:", error);
+      console.error("VERIFY OTP ERROR:", error.response?.data || error);
       throw error;
     }
   };
 
   // ================= LOGOUT =================
-  const logout = async () => {
-    try {
-      const t = localStorage.getItem('session_token');
-
-      if (t) {
-        await axios.post(
-          `${API_URL}/api/auth/logout`,
-          {},
-          { headers: { Authorization: `Bearer ${t}` } }
-        );
-      }
-    } catch (error) {
-      console.error("LOGOUT ERROR:", error);
-    }
-
-    localStorage.removeItem('session_token');
+  const logout = () => {
     setUser(null);
-    setToken(null);
-  };
-
-  // ================= REFRESH =================
-  const refreshUser = async () => {
-    await checkAuth();
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
         loading,
         sendOTP,
         verifyOTP,
-        resendOTP,
-        logout,
-        refreshUser
+        logout
       }}
     >
       {children}
