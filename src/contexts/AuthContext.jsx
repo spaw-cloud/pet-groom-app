@@ -9,7 +9,6 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  // ✅ SEND OTP
   const sendOtp = async (email) => {
     try {
       console.log("API_URL:", BACKEND_URL);
@@ -35,7 +34,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ✅ VERIFY OTP
   const verifyOtp = async (email, otp) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
