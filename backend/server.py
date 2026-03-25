@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 import random
 import smtplib
@@ -20,10 +20,10 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 app = FastAPI()
 router = APIRouter()
 
-# ✅ CORS FIX (VERY IMPORTANT)
+# ✅ CORS FIX
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all for now
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,7 +73,7 @@ async def send_otp(request: Request):
     # delete old OTP
     await db.otp_codes.delete_many({"email": email})
 
-    # store OTP
+    # store OTP (no timezone issues)
     await db.otp_codes.insert_one({
         "email": email,
         "otp": otp,
@@ -83,7 +83,7 @@ async def send_otp(request: Request):
     # send email
     send_email(email, otp)
 
-    print("OTP:", otp)  # for debugging
+    print("OTP:", otp)  # debug
 
     return {"message": "OTP generated successfully"}
 
@@ -122,10 +122,7 @@ async def verify_otp(request: Request):
 
 @router.post("/api/auth/login")
 async def login(request: Request):
-    body = await request.json()
-    email = body.get("email")
-
-    # simulate user not found → trigger OTP
+    # always force OTP flow
     raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -143,6 +140,6 @@ async def logout():
     return {"message": "Logged out"}
 
 
-# ================= REGISTER ROUTES =================
+# ================= ROUTER =================
 
 app.include_router(router)
