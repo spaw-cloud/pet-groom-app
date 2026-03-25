@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from "react";
-import API_BASE_URL from "./config";   // ✅ IMPORTANT LINE
+
 
 const AuthContext = createContext();
 
@@ -8,7 +8,7 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
-  // ✅ SEND OTP
+  //  SEND OTP
   const sendOtp = async (email) => {
     try {
       console.log("API URL:", API_BASE_URL);
@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ✅ VERIFY OTP
+  //  VERIFY OTP
   const verifyOtp = async (email, otp) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
