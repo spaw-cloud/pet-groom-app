@@ -1,106 +1,69 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useContext, useState } from "react";
 
-// ✅ HARD FIX (no env issues)
-const API_URL = "https://pet-groom-app.onrender.com";
+const BACKEND_URL = "https://pet-groom-app.onrender.com";
 
-console.log("API_URL:", API_URL);
+const AuthContext = createContext();
 
-const AuthContext = createContext(undefined);
+export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // ================= CHECK AUTH =================
-  const checkAuth = async () => {
+  // ✅ SEND OTP
+  const sendOtp = async (email) => {
     try {
-      const savedToken = localStorage.getItem('session_token');
+      console.log("API_URL:", BACKEND_URL);
 
-      if (!savedToken) {
-        setLoading(false);
-        return;
+      const res = await fetch(`${BACKEND_URL}/api/auth/send-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to send OTP");
       }
 
-      const response = await axios.get(`${API_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${savedToken}` },
+      return data;
+    } catch (err) {
+      console.error("SEND OTP ERROR:", err);
+      throw err;
+    }
+  };
+
+  // ✅ VERIFY OTP
+  const verifyOtp = async (email, otp) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, otp }),
       });
 
-      setUser(response.data);
+      const data = await res.json();
 
-    } catch (error) {
-      console.error("CHECK AUTH ERROR:", error);
-      localStorage.removeItem('session_token');
-    } finally {
-      setLoading(false);
+      if (!res.ok) {
+        throw new Error(data.detail || "OTP verification failed");
+      }
+
+      setUser(data.user || null);
+
+      return data;
+    } catch (err) {
+      console.error("VERIFY ERROR:", err);
+      throw err;
     }
-  };
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  // ================= SEND OTP =================
-  const sendOTP = async (email) => {
-    try {
-      const res = await axios.post(`${API_URL}/api/auth/send-otp`, {
-        email
-      });
-
-      console.log("OTP SENT:", res.data);
-      return res.data;
-
-    } catch (error) {
-      console.error("SEND OTP ERROR:", error?.response?.data || error);
-      throw error;
-    }
-  };
-
-  // ================= VERIFY OTP =================
-  const verifyOTP = async (email, otp) => {
-    try {
-      const res = await axios.post(
-        `${API_URL}/api/auth/verify-otp`,
-        { email, otp }
-      );
-
-      console.log("VERIFY RESPONSE:", res.data);
-
-      // ✅ TEMP FIX (since backend doesn't return token yet)
-      setUser({ email });
-
-      return res.data;
-
-    } catch (error) {
-      console.error("OTP VERIFY ERROR:", error?.response?.data || error);
-      throw error;
-    }
-  };
-
-  // ================= LOGOUT =================
-  const logout = () => {
-    localStorage.removeItem('session_token');
-    setUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        sendOTP,
-        verifyOTP,
-        logout
-      }}
-    >
+    <AuthContext.Provider value={{ user, sendOtp, verifyOtp }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
-// ================= HOOK =================
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be inside AuthProvider');
-  return ctx;
-};
