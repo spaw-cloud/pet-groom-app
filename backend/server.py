@@ -1,68 +1,113 @@
-import React, { createContext, useContext, useState } from "react";
+from fastapi import FastAPI, APIRouter, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from datetime import datetime, timezone, timedelta
+import os
+import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
+app = FastAPI()
+router = APIRouter()
 
-const AuthContext = createContext();
+# ------------------ CORS ------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-export const useAuth = () => useContext(AuthContext);
+# ------------------ DATABASE ------------------
+MONGO_URL = os.getenv("MONGO_URL")
+client = AsyncIOMotorClient(MONGO_URL)
+db = client["pet_groom"]
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+# ------------------ EMAIL CONFIG ------------------
+EMAIL_USER = os.getenv("EMAIL_USER")
+EMAIL_PASS = os.getenv("EMAIL_PASS")
 
-  //  SEND OTP
-  const sendOtp = async (email) => {
-    try {
-      console.log("API URL:", API_BASE_URL);
+def send_email(to_email, otp):
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = EMAIL_USER
+        msg["To"] = to_email
+        msg["Subject"] = "Your OTP Code"
 
-      const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+        body = f"Your OTP is {otp}"
+        msg.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        print("Email error:", e)
+
+# ------------------ SEND OTP ------------------
+@router.post("/auth/send-otp")
+async def send_otp(request: Request):
+    try:
+        body = await request.json()
+    except:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    email = str(body.get("email", "")).strip().lower()
+
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Valid email required")
+
+    otp = str(random.randint(100000, 999999))
+
+    await db.otps.update_one(
+        {"email": email},
+        {
+            "$set": {
+                "otp": otp,
+                "expires": datetime.now(timezone.utc) + timedelta(minutes=5)
+            }
         },
-        body: JSON.stringify({ email }),
-      });
+        upsert=True
+    )
 
-      const data = await res.json();
+    send_email(email, otp)
 
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to send OTP");
-      }
+    return {"message": "OTP sent"}
 
-      return data;
-    } catch (err) {
-      console.error("SEND OTP ERROR:", err);
-      throw err;
+# ------------------ VERIFY OTP ------------------
+@router.post("/auth/verify-otp")
+async def verify_otp(request: Request):
+    try:
+        body = await request.json()
+    except:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    email = str(body.get("email", "")).strip().lower()
+    otp = str(body.get("otp", "")).strip()
+
+    record = await db.otps.find_one({"email": email})
+
+    if not record:
+        raise HTTPException(status_code=400, detail="OTP not found")
+
+    if record["otp"] != otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    if record["expires"] < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    return {
+        "message": "OTP verified successfully",
+        "user": {"email": email}
     }
-  };
 
-  //  VERIFY OTP
-  const verifyOtp = async (email, otp) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, otp }),
-      });
+# ------------------ ROUTER ------------------
+app.include_router(router, prefix="/api")
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || "OTP verification failed");
-      }
-
-      setUser(data.user || null);
-
-      return data;
-    } catch (err) {
-      console.error("VERIFY ERROR:", err);
-      throw err;
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, sendOtp, verifyOtp }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+# ------------------ ROOT ------------------
+@app.get("/")
+def root():
+    return {"status": "Backend running"}
