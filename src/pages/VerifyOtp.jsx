@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { IoArrowBack, IoShieldCheckmark, IoAlertCircle } from 'react-icons/io5';
+import API_BASE_URL from '../config';   // ✅ FIX
 
 export default function VerifyOtp() {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export default function VerifyOtp() {
     }
   };
 
-  // ✅ VERIFY OTP (DIRECT API CALL)
+  // ✅ VERIFY OTP (FIXED)
   const handleVerifyOTP = async () => {
     const fullOtp = otp.join('').trim();
 
@@ -60,7 +61,7 @@ export default function VerifyOtp() {
       setErrorMsg('');
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/verify-otp`,
+        `${API_BASE_URL}/api/auth/verify-otp`,
         {
           method: "POST",
           headers: {
@@ -79,14 +80,10 @@ export default function VerifyOtp() {
         throw new Error(data.detail || "Invalid OTP");
       }
 
-      console.log("OTP VERIFIED:", data);
-
-      // ✅ SUCCESS → go to app
       navigate('/tabs', { replace: true });
 
     } catch (error) {
       console.error("VERIFY ERROR:", error);
-
       setErrorMsg(error.message || "Invalid OTP");
 
       setOtp(['', '', '', '', '', '']);
@@ -97,13 +94,13 @@ export default function VerifyOtp() {
     }
   };
 
-  // ✅ RESEND OTP (DIRECT API CALL)
+  // ✅ RESEND OTP (FIXED)
   const handleResendOTP = async () => {
     try {
       setResending(true);
 
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/send-otp`,
+        `${API_BASE_URL}/api/auth/send-otp`,
         {
           method: "POST",
           headers: {
@@ -129,67 +126,42 @@ export default function VerifyOtp() {
   return (
     <div className="page">
       <div style={{ padding: '48px 24px 16px' }}>
-        <button onClick={() => navigate(-1)} style={{ width: 40, height: 40, borderRadius: 20, background: '#1e293b', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => navigate(-1)}>
           <IoArrowBack size={24} color="#fff" />
         </button>
       </div>
 
       <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ width: 100, height: 100, borderRadius: 50, background: 'rgba(139,92,246,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 32, marginTop: 20 }}>
-          <IoShieldCheckmark size={64} color="#8B5CF6" />
-        </div>
+        <IoShieldCheckmark size={64} color="#8B5CF6" />
 
-        <h1 style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>
-          Verify Email
-        </h1>
+        <h1>Verify Email</h1>
 
-        <p style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center', marginBottom: 40 }}>
-          Enter the 6-digit code sent to<br />
-          <span style={{ color: '#8B5CF6', fontWeight: 600 }}>{email}</span>
+        <p>
+          Enter code sent to <br />
+          <span>{email}</span>
         </p>
 
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
           {otp.map((digit, i) => (
             <input
               key={i}
               ref={el => inputRefs.current[i] = el}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
               value={digit}
-              onChange={e => handleOtpChange(e.target.value.replace(/\D/g, ''), i)}
+              onChange={e => handleOtpChange(e.target.value, i)}
               onKeyDown={e => handleKeyDown(e, i)}
-              disabled={verifying}
-              style={{
-                width: 48,
-                height: 56,
-                borderRadius: 12,
-                background: '#1e293b',
-                border: '2px solid #334155',
-                color: '#fff',
-                fontSize: 24,
-                textAlign: 'center'
-              }}
+              maxLength={1}
             />
           ))}
         </div>
 
-        {errorMsg && (
-          <div style={{ display: 'flex', gap: 8, background: 'rgba(239,68,68,0.12)', padding: 10, borderRadius: 10 }}>
-            <IoAlertCircle color="#ef4444" />
-            <span style={{ color: '#ef4444' }}>{errorMsg}</span>
-          </div>
-        )}
+        {errorMsg && <p style={{ color: 'red' }}>{errorMsg}</p>}
 
-        <button onClick={handleVerifyOTP} disabled={verifying}>
+        <button onClick={handleVerifyOTP}>
           {verifying ? "Verifying..." : "Verify OTP"}
         </button>
 
-        <button
-          disabled={resendTimer > 0 || resending}
-          onClick={handleResendOTP}
-        >
-          {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+        <button onClick={handleResendOTP}>
+          {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
         </button>
       </div>
     </div>
