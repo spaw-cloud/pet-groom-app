@@ -2,14 +2,13 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from jose import jwt
-from passlib.context import CryptContext
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # ---------------- CONFIG ----------------
 SECRET_KEY = "supersecretkey"
 ALGORITHM = "HS256"
 
-# ✅ YOUR MONGODB URI (ADDED)
+# ✅ YOUR MONGODB URI
 MONGO_URI = "mongodb+srv://spawcbe_db_user:Spawappleid2026@cluster0.rtqzjmi.mongodb.net/?appName=Cluster0"
 
 app = FastAPI()
@@ -30,7 +29,6 @@ services_col = db["services"]
 users_col = db["users"]
 
 # ---------------- SECURITY ----------------
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 def create_token(data: dict):
@@ -51,9 +49,9 @@ def create_admin():
     if not existing:
         users_col.insert_one({
             "phone": "8778454723",
-            "password": pwd_context.hash("admin123")
+            "password": "admin123"  # ✅ simple password (no bcrypt)
         })
-        print("✅ Admin user created")
+        print("✅ Admin created")
     else:
         print("✅ Admin already exists")
 
@@ -68,7 +66,7 @@ def login(data: dict):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if not pwd_context.verify(data.get("password"), user["password"]):
+    if data.get("password") != user["password"]:
         raise HTTPException(status_code=401, detail="Wrong password")
 
     token = create_token({"phone": user["phone"]})
@@ -84,7 +82,7 @@ def get_services(user=Depends(verify_token)):
 @app.post("/api/services")
 def add_service(data: dict, user=Depends(verify_token)):
     new_service = {
-        "id": int(data.get("id", 0)) or int(services_col.count_documents({}) + 1),
+        "id": int(services_col.count_documents({}) + 1),
         "name": data.get("name"),
         "price": data.get("price"),
     }
