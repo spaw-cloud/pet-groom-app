@@ -3,23 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# ✅ CORS (IMPORTANT for frontend connection)
+# ✅ CORS FIX
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change later for security
+    allow_origins=["*"],  # keep * for now
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Root route
+# ✅ ROOT
 @app.get("/")
 def root():
-    return {"message": "Pet Grooming API running 🚀"}
+    return {"message": "Backend running 🚀"}
 
 
 # ============================
-# 🔐 ADMIN LOGIN
+# 🔐 ADMIN LOGIN (MAIN FIX)
 # ============================
 @app.post("/api/admin/login")
 async def admin_login(data: dict):
@@ -30,28 +30,25 @@ async def admin_login(data: dict):
         return {
             "success": True,
             "token": "admin-token",
-            "admin": {
-                "phone": phone
-            }
+            "admin": {"phone": phone}
         }
 
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 # ============================
-# 📦 SERVICES (DUMMY DATA)
+# 📦 SERVICES
 # ============================
 @app.get("/api/services")
 def get_services():
     return [
         {"id": 1, "name": "Bath & Grooming", "price": 499},
         {"id": 2, "name": "Hair Trimming", "price": 299},
-        {"id": 3, "name": "Nail Clipping", "price": 199},
     ]
 
 
 # ============================
-# 📅 BOOKINGS (DUMMY DATA)
+# 📅 BOOKINGS
 # ============================
 @app.get("/api/admin/bookings")
 def get_bookings():
@@ -67,7 +64,7 @@ def get_bookings():
 
 
 # ============================
-# 👤 CUSTOMERS (DUMMY DATA)
+# 👤 CUSTOMERS
 # ============================
 @app.get("/api/admin/customers")
 def get_customers():
@@ -81,17 +78,17 @@ def get_customers():
 
 
 # ============================
-# 🕒 BOOKED SLOTS (FIX 404 ERROR)
+# 🕒 BOOKED SLOTS
 # ============================
 @app.get("/api/booked-slots")
-def get_booked_slots():
+def get_slots():
     return [
         {"date": "2026-03-27", "slots": ["10:00 AM", "11:00 AM"]}
     ]
 
 
 # ============================
-# 🧪 TEST ROUTE
+# 🧪 TEST
 # ============================
 @app.get("/api/test")
 def test():
