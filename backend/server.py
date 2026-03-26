@@ -15,8 +15,8 @@ ALGORITHM = "HS256"
 MONGO_URI = "mongodb+srv://spawcbe_db_user:Spawappleid2026@cluster0.rtqzjmi.mongodb.net/?appName=Cluster0"
 
 # 🔴 REPLACE THESE WITH YOUR GMAIL DETAILS
-EMAIL = "yourgmail@gmail.com"
-PASSWORD = "your_app_password"
+EMAIL = "spawcbe@gmail.com"
+PASSWORD = "mqnbdhwotsrqmjrk"
 
 app = FastAPI()
 
