@@ -1,93 +1,43 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
-import random
-import smtplib
-import os
-from email.mime.text import MIMEText
 
-# ✅ CREATE APP (THIS WAS MISSING)
 app = FastAPI()
 
-# ✅ CORS (IMPORTANT FOR FRONTEND)
+# ✅ CORS (VERY IMPORTANT for frontend connection)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # You can restrict later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-router = APIRouter()
-
-# Temporary OTP store
-otp_store = {}
-
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
+# ✅ Root test route
+@app.get("/")
+def root():
+    return {"message": "Backend is running 🚀"}
 
 
-# 🔹 SEND OTP
-@router.post("/auth/send-otp")
-async def send_otp(request: Request):
-    body = await request.json()
-    email = body.get("email", "").strip().lower()
+# ✅ ADMIN LOGIN ROUTE (THIS FIXES YOUR ERROR)
+@app.post("/api/admin/login")
+async def admin_login(data: dict):
+    phone = data.get("phone")
+    password = data.get("password")
 
-    if not email or "@" not in email:
-        raise HTTPException(status_code=400, detail="Valid email required")
+    # 🔐 Change credentials if needed
+    if phone == "8778454723" and password == "admin123":
+        return {
+            "success": True,
+            "token": "admin-token",
+            "admin": {
+                "phone": phone
+            }
+        }
 
-    otp = str(random.randint(100000, 999999))
-
-    otp_store[email] = {
-        "otp": otp,
-        "expires": datetime.utcnow() + timedelta(minutes=5)
-    }
-
-    try:
-        msg = MIMEText(f"Your OTP is: {otp}")
-        msg["Subject"] = "Your OTP Code"
-        msg["From"] = EMAIL_USER
-        msg["To"] = email
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASS)
-        server.sendmail(EMAIL_USER, email, msg.as_string())
-        server.quit()
-
-        print("✅ OTP sent:", otp)
-
-    except Exception as e:
-        print("❌ Email error:", str(e))
-        raise HTTPException(status_code=500, detail="Failed to send email")
-
-    return {"message": "OTP sent successfully"}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
-# 🔹 VERIFY OTP
-@router.post("/auth/verify-otp")
-async def verify_otp(request: Request):
-    body = await request.json()
-    email = body.get("email", "").strip().lower()
-    otp = body.get("otp")
-
-    record = otp_store.get(email)
-
-    if not record:
-        raise HTTPException(status_code=400, detail="OTP not found")
-
-    if datetime.utcnow() > record["expires"]:
-        raise HTTPException(status_code=400, detail="OTP expired")
-
-    if record["otp"] != otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-
-    return {
-        "message": "OTP verified",
-        "user": {"email": email},
-        "session_token": "demo_token"
-    }
-
-
-# ✅ INCLUDE ROUTER
-app.include_router(router, prefix="/api")
+# ✅ OPTIONAL: test API (to check frontend connection)
+@app.get("/api/test")
+def test():
+    return {"status": "API working ✅"}
