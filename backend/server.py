@@ -4,12 +4,19 @@ from pymongo import MongoClient
 from jose import jwt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
+import random
+import smtplib
+from email.mime.text import MIMEText
+
 # ---------------- CONFIG ----------------
 SECRET_KEY = "supersecretkey"
 ALGORITHM = "HS256"
 
-# ✅ YOUR MONGODB URI
 MONGO_URI = "mongodb+srv://spawcbe_db_user:Spawappleid2026@cluster0.rtqzjmi.mongodb.net/?appName=Cluster0"
+
+# 🔴 REPLACE THESE WITH YOUR GMAIL DETAILS
+EMAIL = "yourgmail@gmail.com"
+PASSWORD = "your_app_password"
 
 app = FastAPI()
 
@@ -27,6 +34,7 @@ db = client["petgroom"]
 
 services_col = db["services"]
 users_col = db["users"]
+bookings_col = db["bookings"]
 
 # ---------------- SECURITY ----------------
 security = HTTPBearer()
@@ -42,21 +50,16 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     except:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-
-# ---------------- AUTO CREATE ADMIN ----------------
+# ---------------- ADMIN AUTO CREATE ----------------
 def create_admin():
     existing = users_col.find_one({"phone": "8778454723"})
     if not existing:
         users_col.insert_one({
             "phone": "8778454723",
-            "password": "admin123"  # ✅ simple password (no bcrypt)
+            "password": "admin123"
         })
-        print("✅ Admin created")
-    else:
-        print("✅ Admin already exists")
 
 create_admin()
-
 
 # ---------------- ADMIN LOGIN ----------------
 @app.post("/api/admin/login")
@@ -72,12 +75,65 @@ def login(data: dict):
     token = create_token({"phone": user["phone"]})
     return {"success": True, "token": token}
 
+# =========================================================
+# 🔥 OTP AUTH (NEW - DOES NOT AFFECT ADMIN)
+# =========================================================
 
-# ---------------- SERVICES CRUD ----------------
+otp_store = {}
+
+def send_otp_email(email, otp):
+    msg = MIMEText(f"Your OTP is {otp}")
+    msg["Subject"] = "Spaw Group Login OTP"
+    msg["From"] = EMAIL
+    msg["To"] = email
+
+    try:
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(EMAIL, PASSWORD)
+        server.send_message(msg)
+        server.quit()
+    except Exception as e:
+        print("Email error:", e)
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
+
+@app.post("/api/auth/send-otp")
+def send_otp(data: dict):
+    email = data.get("email")
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Email required")
+
+    otp = str(random.randint(100000, 999999))
+    otp_store[email] = otp
+
+    send_otp_email(email, otp)
+
+    return {"message": "OTP sent successfully"}
+
+@app.post("/api/auth/verify-otp")
+def verify_otp(data: dict):
+    email = data.get("email")
+    otp = data.get("otp")
+
+    if otp_store.get(email) != otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    user = users_col.find_one({"email": email})
+
+    if not user:
+        users_col.insert_one({"email": email})
+
+    token = create_token({"email": email})
+
+    return {"success": True, "token": token}
+
+# =========================================================
+# SERVICES (UNCHANGED)
+# =========================================================
+
 @app.get("/api/services")
 def get_services(user=Depends(verify_token)):
     return list(services_col.find({}, {"_id": 0}))
-
 
 @app.post("/api/services")
 def add_service(data: dict, user=Depends(verify_token)):
@@ -89,38 +145,39 @@ def add_service(data: dict, user=Depends(verify_token)):
     services_col.insert_one(new_service)
     return new_service
 
-
 @app.delete("/api/services/{service_id}")
 def delete_service(service_id: int, user=Depends(verify_token)):
     services_col.delete_one({"id": service_id})
     return {"message": "Deleted"}
 
+# =========================================================
+# BOOKINGS (NOW REAL)
+# =========================================================
 
-# ---------------- BOOKINGS ----------------
+@app.post("/api/bookings")
+def create_booking(data: dict, user=Depends(verify_token)):
+    booking = {
+        "id": int(bookings_col.count_documents({}) + 1),
+        "email": user.get("email"),
+        "service": data.get("service"),
+        "date": data.get("date"),
+        "time": data.get("time"),
+    }
+
+    bookings_col.insert_one(booking)
+    return booking
+
 @app.get("/api/admin/bookings")
 def get_bookings(user=Depends(verify_token)):
-    return [
-        {
-            "id": 1,
-            "customer": "Rahul",
-            "service": "Bath & Grooming",
-            "date": "2026-03-27",
-            "time": "10:00 AM",
-        }
-    ]
+    return list(bookings_col.find({}, {"_id": 0}))
 
+# =========================================================
+# CUSTOMERS
+# =========================================================
 
-# ---------------- CUSTOMERS ----------------
 @app.get("/api/admin/customers")
 def get_customers(user=Depends(verify_token)):
-    return [
-        {
-            "id": 1,
-            "name": "Rahul",
-            "phone": "9876543210"
-        }
-    ]
-
+    return list(users_col.find({}, {"_id": 0}))
 
 # ---------------- ROOT ----------------
 @app.get("/")
