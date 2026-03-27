@@ -1,95 +1,139 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { IoSearch, IoStar, IoTimeOutline, IoChevronForward, IoRefresh } from 'react-icons/io5';
-import NotificationBell from '../components/NotificationBell';
-import InstallBanner from '../components/InstallBanner';
-import api from '../lib/api';
+import { useEffect, useState } from "react";
+import api from "../lib/api";
 
 export default function Home() {
-  const { user, token } = useAuth();
-  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
 
-  const fetchServices = useCallback(async () => {
-    try {
-      const res = await api.get('/services');
-      setServices(res.data);
-    } catch {} finally { setLoading(false); setRefreshing(false); }
+  useEffect(() => {
+    fetchServices();
   }, []);
 
-  useEffect(() => { fetchServices(); }, [fetchServices]);
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/services");
+      setServices(res.data);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load services");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filtered = services.filter(s =>
-    s.name?.toLowerCase().includes(searchQuery.toLowerCase()) || s.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = services.filter((s) =>
+    s.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div data-testid="home-page" style={{ flex: 1, background: '#0f172a', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div style={{ padding: '20px 20px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontSize: 14, color: '#94a3b8' }}>Hello, {user?.name?.split(' ')[0] || 'there'}</div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: '4px 0 0', fontFamily: "'Playfair Display', serif" }}>Our Services</h1>
-        </div>
-        <NotificationBell token={token} type="user" />
-      </div>
+    <div style={styles.container}>
+      <h2 style={styles.title}>Our Services</h2>
 
-      {/* Search */}
-      <div style={{ padding: '0 20px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', borderRadius: 12, padding: '0 16px', gap: 12, border: '1px solid #334155' }}>
-          <IoSearch size={20} color="#64748b" />
-          <input type="text" placeholder="Search services..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            data-testid="search-services-input" style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontSize: 16, padding: '14px 0', fontFamily: "'Outfit', sans-serif" }} />
-        </div>
-      </div>
+      {/* SEARCH */}
+      <input
+        style={styles.search}
+        placeholder="Search services..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-      {/* Services List */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '0 20px' }}>
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}><div className="spinner" /></div>
-        ) : filtered.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 60, gap: 16 }}>
-            <div style={{ fontSize: 48, opacity: 0.3 }}>?</div>
-            <p style={{ color: '#94a3b8', fontSize: 16 }}>{searchQuery ? 'No matching services' : 'No services available'}</p>
-            <button onClick={() => { setRefreshing(true); fetchServices(); }} className="btn btn-ghost" style={{ fontSize: 14 }}>
-              <IoRefresh size={18} /> Refresh
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 16 }}>
-            {filtered.map((service) => (
-              <button key={service.service_id || service.id} data-testid={`service-card-${service.service_id || service.id}`}
-                onClick={() => navigate('/booking/service-detail', { state: { service } })}
-                style={{ background: '#1e293b', borderRadius: 16, overflow: 'hidden', border: '1px solid #334155', textAlign: 'left', cursor: 'pointer', width: '100%' }}>
-                {service.image_base64 && (
-                  <div style={{ height: 160, overflow: 'hidden' }}>
-                    <img src={service.image_base64} alt={service.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                )}
-                <div style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ fontSize: 18, fontWeight: 700, color: '#fff', margin: 0 }}>{service.name}</h3>
-                    <IoChevronForward size={20} color="#8B5CF6" />
-                  </div>
-                  <p style={{ color: '#94a3b8', fontSize: 14, margin: '8px 0 12px', lineHeight: '20px' }}>{service.description}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 20, fontWeight: 800, color: '#8B5CF6' }}>Rs.{service.price}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#94a3b8', fontSize: 13 }}>
-                      <IoTimeOutline size={16} />
-                      <span>{service.duration || '60 min'}</span>
-                    </div>
-                  </div>
-                </div>
+      {/* LOADING */}
+      {loading && (
+        <div style={styles.grid}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={styles.skeleton}></div>
+          ))}
+        </div>
+      )}
+
+      {/* ERROR */}
+      {!loading && error && (
+        <div style={styles.error}>{error}</div>
+      )}
+
+      {/* EMPTY STATE */}
+      {!loading && !error && filtered.length === 0 && (
+        <div style={styles.empty}>
+          <h3>No services available 🐾</h3>
+          <p>Add services from admin panel</p>
+          <button onClick={fetchServices}>Refresh</button>
+        </div>
+      )}
+
+      {/* SERVICES LIST */}
+      {!loading && filtered.length > 0 && (
+        <div style={styles.grid}>
+          {filtered.map((s) => (
+            <div key={s.id} style={styles.card}>
+              <h3>{s.name}</h3>
+              <p>₹{s.price}</p>
+
+              <button
+                style={styles.button}
+                onClick={() => alert(`Booking ${s.name}`)}
+              >
+                Book Now
               </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <InstallBanner />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
+
+const styles = {
+  container: {
+    padding: "20px",
+    background: "#0f172a",
+    minHeight: "100vh",
+    color: "#fff",
+  },
+  title: {
+    fontSize: "24px",
+    marginBottom: "15px",
+  },
+  search: {
+    width: "100%",
+    padding: "10px",
+    marginBottom: "20px",
+    borderRadius: "8px",
+    border: "none",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "15px",
+  },
+  card: {
+    background: "#1e293b",
+    padding: "15px",
+    borderRadius: "12px",
+  },
+  button: {
+    marginTop: "10px",
+    padding: "8px",
+    background: "#7c3aed",
+    border: "none",
+    borderRadius: "6px",
+    color: "#fff",
+    cursor: "pointer",
+  },
+  skeleton: {
+    height: "100px",
+    background: "#1e293b",
+    borderRadius: "12px",
+    opacity: 0.5,
+  },
+  empty: {
+    textAlign: "center",
+    marginTop: "50px",
+  },
+  error: {
+    color: "red",
+    textAlign: "center",
+  },
+};
