@@ -1,81 +1,37 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import random
+import smtplib
+from email.mime.text import MIMEText
 
-app = Flask(__name__)
-CORS(app)
-
-# =========================
-# HEALTH CHECK (IMPORTANT)
-# =========================
-@app.route("/")
-def home():
-    return jsonify({"status": "Backend is running ✅"}), 200
-
-
-# =========================
-# SEND OTP ROUTE (FIXED)
-# =========================
 @app.route("/api/auth/send-otp", methods=["POST"])
 def send_otp():
     try:
         data = request.get_json()
 
-        phone = data.get("phone")
+        email = data.get("email")
 
-        if not phone:
-            return jsonify({"error": "Phone number is required"}), 400
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
 
-        # Generate OTP (mock)
         otp = random.randint(1000, 9999)
 
-        print(f"📲 OTP for {phone}: {otp}")
+        # EMAIL CONFIG
+        sender_email = "yourgmail@gmail.com"
+        sender_password = "your_app_password"
 
-        # NOTE: Here you can integrate Twilio later
+        msg = MIMEText(f"Your OTP is: {otp}")
+        msg["Subject"] = "Your OTP Code"
+        msg["From"] = sender_email
+        msg["To"] = email
 
-        return jsonify({
-            "message": "OTP sent successfully",
-            "otp": otp  # REMOVE THIS IN PRODUCTION
-        }), 200
+        # SEND EMAIL
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"OTP sent to {email}: {otp}")
 
-
-# =========================
-# VERIFY OTP (OPTIONAL)
-# =========================
-@app.route("/api/auth/verify-otp", methods=["POST"])
-def verify_otp():
-    try:
-        data = request.get_json()
-
-        otp = data.get("otp")
-
-        if not otp:
-            return jsonify({"error": "OTP is required"}), 400
-
-        # MOCK verification
-        return jsonify({"message": "OTP verified ✅"}), 200
+        return jsonify({"message": "OTP sent successfully"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# =========================
-# SERVICES (FOR FRONTEND FIX)
-# =========================
-@app.route("/api/services", methods=["GET"])
-def get_services():
-    services = [
-        {"name": "Bath & Grooming", "price": 499},
-        {"name": "Hair Trimming", "price": 299}
-    ]
-    return jsonify(services), 200
-
-
-# =========================
-# RUN SERVER
-# =========================
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
