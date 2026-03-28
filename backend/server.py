@@ -5,12 +5,11 @@ import smtplib
 from email.mime.text import MIMEText
 import os
 
-# ✅ CREATE APP FIRST
 app = Flask(__name__)
 CORS(app)
 
 # =========================
-# HOME ROUTE
+# HOME
 # =========================
 @app.route("/")
 def home():
@@ -18,7 +17,7 @@ def home():
 
 
 # =========================
-# SEND OTP (EMAIL)
+# SEND OTP (6 DIGIT FIXED)
 # =========================
 @app.route("/api/auth/send-otp", methods=["POST"])
 def send_otp():
@@ -29,9 +28,9 @@ def send_otp():
         if not email:
             return jsonify({"error": "Email is required"}), 400
 
-        otp = random.randint(1000, 9999)
+        # ✅ 6 DIGIT OTP FIX
+        otp = str(random.randint(100000, 999999))
 
-        # GET FROM ENV (Render)
         sender_email = os.getenv("EMAIL_USER")
         sender_password = os.getenv("EMAIL_PASS")
 
@@ -73,8 +72,5 @@ def get_services():
     ]), 200
 
 
-# =========================
-# RUN
-# =========================
 if __name__ == "__main__":
     app.run(debug=True)
