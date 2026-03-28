@@ -1,59 +1,81 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import random
 
-app = FastAPI()
+app = Flask(__name__)
+CORS(app)
 
-# ✅ CORS (VERY IMPORTANT for frontend)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # later restrict to your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ✅ Root route (fix 405 issue)
-@app.get("/")
+# =========================
+# HEALTH CHECK (IMPORTANT)
+# =========================
+@app.route("/")
 def home():
-    return {"message": "Pet Groom API is running 🚀"}
+    return jsonify({"status": "Backend is running ✅"}), 200
 
 
-# 🧠 Dummy DB (replace later with real DB)
-services = [
-    {"id": 1, "name": "Signature Bath", "price": 999},
-    {"id": 2, "name": "Express Trim", "price": 1199},
-    {"id": 3, "name": "Full Groom", "price": 1999},
-]
+# =========================
+# SEND OTP ROUTE (FIXED)
+# =========================
+@app.route("/api/auth/send-otp", methods=["POST"])
+def send_otp():
+    try:
+        data = request.get_json()
 
-bookings = []
+        phone = data.get("phone")
+
+        if not phone:
+            return jsonify({"error": "Phone number is required"}), 400
+
+        # Generate OTP (mock)
+        otp = random.randint(1000, 9999)
+
+        print(f"📲 OTP for {phone}: {otp}")
+
+        # NOTE: Here you can integrate Twilio later
+
+        return jsonify({
+            "message": "OTP sent successfully",
+            "otp": otp  # REMOVE THIS IN PRODUCTION
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-# ✅ Get services
-@app.get("/services")
+# =========================
+# VERIFY OTP (OPTIONAL)
+# =========================
+@app.route("/api/auth/verify-otp", methods=["POST"])
+def verify_otp():
+    try:
+        data = request.get_json()
+
+        otp = data.get("otp")
+
+        if not otp:
+            return jsonify({"error": "OTP is required"}), 400
+
+        # MOCK verification
+        return jsonify({"message": "OTP verified ✅"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =========================
+# SERVICES (FOR FRONTEND FIX)
+# =========================
+@app.route("/api/services", methods=["GET"])
 def get_services():
-    return services
+    services = [
+        {"name": "Bath & Grooming", "price": 499},
+        {"name": "Hair Trimming", "price": 299}
+    ]
+    return jsonify(services), 200
 
 
-# ✅ Create booking
-@app.post("/bookings")
-def create_booking(data: dict):
-    # Prevent double booking
-    for b in bookings:
-        if b["date"] == data["date"] and b["time"] == data["time"]:
-            raise HTTPException(status_code=400, detail="Slot already booked")
-
-    bookings.append(data)
-    return {"message": "Booking successful", "data": data}
-
-
-# ✅ Get booked slots
-@app.get("/bookings/slots")
-def get_slots(date: str):
-    slots = [b["time"] for b in bookings if b["date"] == date]
-    return slots
-
-
-# ✅ Get all bookings (admin)
-@app.get("/bookings")
-def get_all_bookings():
-    return bookings
+# =========================
+# RUN SERVER
+# =========================
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
