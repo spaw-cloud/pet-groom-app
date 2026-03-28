@@ -1,7 +1,5 @@
-import axios from "axios";
+const API_BASE = "https://pet-groom-app.onrender.com";
 
-const api = axios.create({
-  baseURL: "https://pet-groom-app.onrender.com",
-});
-
-export default api;
+export const sendOtp = (data) => {
+  return axios.post(`${API_BASE}/api/auth/send-otp`, data);
+};
