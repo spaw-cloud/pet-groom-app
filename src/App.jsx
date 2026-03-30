@@ -5,7 +5,7 @@ import AdminBookings from "./pages/admin/AdminBookings";
 import Login from "./pages/Login";
 import Navbar from "./components/Navbar";
 
-// 🔐 Admin Protection
+// 🔐 Protect Admin Routes
 const AdminRoute = ({ children }) => {
   const token = localStorage.getItem("token");
   return token ? children : <Navigate to="/login" />;
@@ -13,13 +13,20 @@ const AdminRoute = ({ children }) => {
 
 export default function App() {
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Navbar />
 
       <Routes>
+        {/* Public */}
         <Route path="/" element={<Bookings />} />
         <Route path="/login" element={<Login />} />
 
+        {/* Admin */}
         <Route
           path="/admin/services"
           element={
