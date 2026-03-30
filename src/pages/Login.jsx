@@ -18,33 +18,29 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-
-        <h2 className="text-2xl font-bold text-center mb-6">
-          🔐 Admin Login
-        </h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-6 rounded-xl shadow w-80">
+        <h2 className="text-xl font-bold mb-4">Admin Login</h2>
 
         <input
-          className="w-full p-3 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black"
+          className="w-full p-2 border mb-2"
           placeholder="Username"
           onChange={(e) => setUsername(e.target.value)}
         />
 
         <input
           type="password"
-          className="w-full p-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-black"
+          className="w-full p-2 border mb-4"
           placeholder="Password"
           onChange={(e) => setPassword(e.target.value)}
         />
 
         <button
           onClick={handleLogin}
-          className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition"
+          className="w-full bg-black text-white p-2"
         >
           Login
         </button>
-
       </div>
     </div>
   );
