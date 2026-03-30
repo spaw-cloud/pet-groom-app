@@ -1,16 +1,27 @@
 import axios from "axios";
 
-// ✅ Use ENV or fallback
+// ✅ Use correct ENV (Vercel) or fallback to Render backend
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://pet-groom-app.onrender.com";
+
+// ✅ Create axios instance
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
+  baseURL: BASE_URL,
 });
 
-// ✅ Optional: log errors (helps debugging)
+// ✅ Debug logs (VERY helpful)
+console.log("API URL:", BASE_URL);
+
+// ✅ Optional: handle errors globally
 API.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    console.error("API ERROR:", err.response?.data || err.message);
-    return Promise.reject(err);
+  (response) => response,
+  (error) => {
+    console.error(
+      "API ERROR:",
+      error.response?.data || error.message
+    );
+    return Promise.reject(error);
   }
 );
 
