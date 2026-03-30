@@ -12,15 +12,18 @@ export default function Login() {
       const res = await api.post("/login", { username, password });
       localStorage.setItem("token", res.data.token);
       navigate("/admin/bookings");
-    } catch {
+    } catch (err) {
+      console.error(err);
       alert("Invalid login ❌");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-6 rounded-xl shadow w-80">
-        <h2 className="text-xl font-bold mb-4">Admin Login</h2>
+        <h2 className="text-xl font-bold mb-4 text-center">
+          Admin Login
+        </h2>
 
         <input
           className="w-full p-2 border mb-2"
@@ -37,7 +40,7 @@ export default function Login() {
 
         <button
           onClick={handleLogin}
-          className="w-full bg-black text-white p-2"
+          className="w-full bg-black text-white p-2 rounded"
         >
           Login
         </button>
