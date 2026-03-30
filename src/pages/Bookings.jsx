@@ -30,7 +30,7 @@ export default function Bookings() {
 
         // ✅ WhatsApp auto message (FREE)
         window.open(
-          `https://wa.me/91XXXXXXXXXX?text=New Booking:%0AName:${form.name}%0APet:${form.pet}%0ATime:${form.time}`,
+          `https://wa.me/918778454723?text=New Booking:%0AName:${form.name}%0APet:${form.pet}%0ATime:${form.time}`,
           "_blank"
         );
 
