@@ -1,6 +1,6 @@
 import { useState } from "react";
-import api from "../lib/api";
 import { useNavigate } from "react-router-dom";
+import API from "../lib/api";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -8,43 +8,50 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleLogin = async () => {
+    if (!username || !password) {
+      alert("Enter username & password");
+      return;
+    }
+
     try {
-      const res = await api.post("/login", { username, password });
-      localStorage.setItem("token", res.data.token);
-      navigate("/admin/bookings");
+      const res = await API.post("/login", {
+        username,
+        password,
+      });
+
+      if (res.data.success) {
+        localStorage.setItem("token", res.data.token);
+        alert("Login successful ✅");
+        navigate("/admin/services");
+      } else {
+        alert("Invalid login ❌");
+      }
     } catch (err) {
       console.error(err);
-      alert("Invalid login ❌");
+      alert("Login failed ❌");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-6 rounded-xl shadow w-80">
-        <h2 className="text-xl font-bold mb-4 text-center">
-          Admin Login
-        </h2>
+    <div style={{ padding: "20px" }}>
+      <h2>Admin Login</h2>
 
-        <input
-          className="w-full p-2 border mb-2"
-          placeholder="Username"
-          onChange={(e) => setUsername(e.target.value)}
-        />
+      <input
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+      />
+      <br />
 
-        <input
-          type="password"
-          className="w-full p-2 border mb-4"
-          placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <br />
 
-        <button
-          onClick={handleLogin}
-          className="w-full bg-black text-white p-2 rounded"
-        >
-          Login
-        </button>
-      </div>
+      <button onClick={handleLogin}>Login</button>
     </div>
   );
 }
