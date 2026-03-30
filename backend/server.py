@@ -1,11 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
-import os
 
 app = FastAPI()
 
-# CORS (allow frontend)
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,31 +13,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MongoDB connection
-MONGO_URI = "mongodb+srv://spaw_db_user:Spawappleid2026@cluster0.rtqzjmi.mongodb.net/spaw"
-
+# MongoDB
+MONGO_URI = "mongodb+srv://spaw_db_user:YOUR_PASSWORD@cluster0.rtqzjmi.mongodb.net/spaw"
 client = MongoClient(MONGO_URI)
 db = client["spaw"]
 
-# Collections
 services_collection = db["services"]
+bookings_collection = db["bookings"]
 
-# Routes
+# Home
 @app.get("/")
 def home():
     return {"message": "Backend is running 🚀"}
 
+# SERVICES APIs
 @app.get("/services")
 def get_services():
-    services = list(services_collection.find({}, {"_id": 0}))
-    return services
+    return list(services_collection.find({}, {"_id": 0}))
 
 @app.post("/services")
 def add_service(service: dict):
     services_collection.insert_one(service)
-    return {"message": "Service added successfully"}
+    return {"message": "Service added"}
 
 @app.delete("/services/{name}")
 def delete_service(name: str):
     services_collection.delete_one({"name": name})
     return {"message": "Service deleted"}
+
+# BOOKINGS APIs
+@app.post("/bookings")
+def create_booking(data: dict):
+    existing = bookings_collection.find_one({
+        "date": data.get("date"),
+        "time": data.get("time")
+    })
+
+    if existing:
+        return {"error": "Slot already booked ❌"}
+
+    bookings_collection.insert_one(data)
+    return {"message": "Booking created ✅"}
+
+@app.get("/bookings")
+def get_bookings():
+    return list(bookings_collection.find({}, {"_id": 0}))
+
+@app.delete("/bookings/{name}")
+def delete_booking(name: str):
+    bookings_collection.delete_one({"name": name})
+    return {"message": "Booking deleted"}
