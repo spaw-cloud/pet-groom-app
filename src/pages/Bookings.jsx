@@ -3,71 +3,60 @@ import api from "../lib/api";
 
 export default function Bookings() {
   const [services, setServices] = useState([]);
-  const [selectedService, setSelectedService] = useState("");
   const [name, setName] = useState("");
+  const [selectedService, setSelectedService] = useState("");
+  const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  // Fetch services
   useEffect(() => {
     const fetchServices = async () => {
-      try {
-        const res = await api.get("/services");
-        setServices(res.data);
-      } catch (err) {
-        console.error("Error fetching services:", err);
-      }
+      const res = await api.get("/services");
+      setServices(res.data);
     };
-
     fetchServices();
   }, []);
 
-  // Submit booking
   const handleBooking = async () => {
-    if (!name || !selectedService || !time) {
-      alert("Please fill all fields");
+    if (!name || !selectedService || !date || !time) {
+      alert("Fill all fields");
       return;
     }
 
-    setLoading(true);
+    const res = await api.post("/bookings", {
+      name,
+      service: selectedService,
+      date,
+      time,
+    });
 
-    try {
-      await api.post("/bookings", {
-        name,
-        service: selectedService,
-        time,
-      });
-
-      alert("Booking confirmed ✅");
-
-      // Reset form
-      setName("");
-      setSelectedService("");
-      setTime("");
-    } catch (err) {
-      console.error("Booking error:", err);
-      alert("Failed to book ❌");
-    } finally {
-      setLoading(false);
+    if (res.data.error) {
+      alert(res.data.error);
+      return;
     }
+
+    alert("Booking confirmed ✅");
+
+    setName("");
+    setSelectedService("");
+    setDate("");
+    setTime("");
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "400px", margin: "auto" }}>
-      <h2>🐾 Book a Grooming Service</h2>
+    <div style={{ padding: "20px" }}>
+      <h2>🐾 Book Service</h2>
 
       <input
-        type="text"
         placeholder="Your Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
       />
+
+      <br /><br />
 
       <select
         value={selectedService}
         onChange={(e) => setSelectedService(e.target.value)}
-        style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
       >
         <option value="">Select Service</option>
         {services.map((s, i) => (
@@ -77,27 +66,27 @@ export default function Bookings() {
         ))}
       </select>
 
-      <input
-        type="time"
-        value={time}
-        onChange={(e) => setTime(e.target.value)}
-        style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-      />
+      <br /><br />
 
-      <button
-        onClick={handleBooking}
-        disabled={loading}
-        style={{
-          width: "100%",
-          padding: "12px",
-          backgroundColor: "#000",
-          color: "#fff",
-          border: "none",
-          cursor: "pointer",
-        }}
+      <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+
+      <br /><br />
+
+      <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+
+      <br /><br />
+
+      <button onClick={handleBooking}>Book Now</button>
+
+      <br /><br />
+
+      {/* WhatsApp Button */}
+      <a
+        href={`https://wa.me/91XXXXXXXXXX?text=Hi, I booked ${selectedService} on ${date} at ${time}`}
+        target="_blank"
       >
-        {loading ? "Booking..." : "Book Now"}
-      </button>
+        <button>Confirm on WhatsApp</button>
+      </a>
     </div>
   );
 }
