@@ -7,9 +7,8 @@ import os
 
 app = Flask(__name__)
 
-# ✅ Allow all origins (fixes frontend connection)
+# ✅ CORS (allow frontend)
 CORS(app, resources={r"/*": {"origins": "*"}})
-
 
 # =========================
 # HEALTH CHECK
@@ -20,7 +19,7 @@ def home():
 
 
 # =========================
-# SEND OTP (6 DIGIT)
+# OTP SYSTEM
 # =========================
 @app.route("/api/auth/send-otp", methods=["POST"])
 def send_otp():
@@ -37,7 +36,7 @@ def send_otp():
         sender_password = os.getenv("EMAIL_PASS")
 
         if not sender_email or not sender_password:
-            return jsonify({"error": "Email credentials not set in environment"}), 500
+            return jsonify({"error": "Email credentials missing"}), 500
 
         msg = MIMEText(f"Your OTP is: {otp}")
         msg["Subject"] = "Your OTP Code"
@@ -58,39 +57,77 @@ def send_otp():
         return jsonify({"error": str(e)}), 500
 
 
-# =========================
-# VERIFY OTP
-# =========================
 @app.route("/api/auth/verify-otp", methods=["POST"])
 def verify_otp():
     return jsonify({"message": "OTP verified ✅"}), 200
 
 
 # =========================
-# SERVICES (FIXED)
+# SERVICES (FULL CRUD)
 # =========================
+
+# 🔴 TEMP DATABASE (resets on restart)
+services = [
+    {
+        "id": 1,
+        "name": "Bath & Grooming",
+        "price": 499,
+        "description": "Full bath with shampoo and drying"
+    },
+    {
+        "id": 2,
+        "name": "Hair Trimming",
+        "price": 299,
+        "description": "Basic trimming and styling"
+    }
+]
+
+
+# ✅ GET all services
 @app.route("/api/services", methods=["GET"])
 def get_services():
-    services = [
-        {
-            "id": 1,
-            "name": "Bath & Grooming",
-            "price": 499,
-            "description": "Full bath with shampoo and drying"
-        },
-        {
-            "id": 2,
-            "name": "Hair Trimming",
-            "price": 299,
-            "description": "Basic trimming and styling"
-        }
-    ]
-
     return jsonify(services), 200
 
 
+# ✅ ADD service
+@app.route("/api/services", methods=["POST"])
+def add_service():
+    try:
+        data = request.get_json()
+
+        name = data.get("name")
+        price = data.get("price")
+
+        if not name or not price:
+            return jsonify({"error": "Name and price required"}), 400
+
+        new_service = {
+            "id": services[-1]["id"] + 1 if services else 1,
+            "name": name,
+            "price": price,
+            "description": data.get("description", "")
+        }
+
+        services.append(new_service)
+
+        return jsonify(new_service), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ✅ DELETE service
+@app.route("/api/services/<int:id>", methods=["DELETE"])
+def delete_service(id):
+    global services
+
+    services = [s for s in services if s["id"] != id]
+
+    return jsonify({"message": "Service deleted"}), 200
+
+
 # =========================
-# IMPORTANT FOR RENDER
+# RUN SERVER (RENDER FIX)
 # =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
