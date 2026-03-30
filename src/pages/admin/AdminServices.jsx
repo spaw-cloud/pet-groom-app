@@ -11,14 +11,18 @@ export default function AdminServices() {
   }, []);
 
   const fetchServices = async () => {
-    const res = await api.get("/services");
-    setServices(res.data);
+    try {
+      const res = await api.get("/api/services"); // ✅ FIXED
+      setServices(res.data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const addService = async () => {
     if (!name || !price) return alert("Fill all fields");
 
-    await api.post("/services", {
+    await api.post("/api/services", {  // ✅ FIXED
       name,
       price: Number(price),
     });
@@ -29,7 +33,7 @@ export default function AdminServices() {
   };
 
   const deleteService = async (id) => {
-    await api.delete(`/services/${id}`);
+    await api.delete(`/api/services/${id}`); // ✅ FIXED
     fetchServices();
   };
 
@@ -37,7 +41,6 @@ export default function AdminServices() {
     <div style={styles.container}>
       <h2>Manage Services</h2>
 
-      {/* ADD FORM */}
       <div style={styles.form}>
         <input
           placeholder="Service name"
@@ -52,7 +55,6 @@ export default function AdminServices() {
         <button onClick={addService}>Add</button>
       </div>
 
-      {/* LIST */}
       {services.map((s) => (
         <div key={s.id} style={styles.card}>
           <span>{s.name} - ₹{s.price}</span>
