@@ -1,4 +1,4 @@
-# server.py
+# backend/server.py
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +8,7 @@ import os
 
 app = FastAPI()
 
-# ✅ ENV (for deployment)
+# ✅ ENV (Render / Local)
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 
 # ✅ MongoDB connection
@@ -16,12 +16,12 @@ client = MongoClient(MONGO_URI)
 db = client["spaw_db"]
 bookings_collection = db["bookings"]
 
-# ✅ CORS (IMPORTANT)
+# ✅ CORS (VERY IMPORTANT)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://your-vercel-app.vercel.app",  # change after deploy
+        "https://your-vercel-app.vercel.app"  # change after frontend deploy
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -36,12 +36,12 @@ class Booking(BaseModel):
     pet: str
     time: str
 
-# ✅ Health check
+# ✅ ROOT ROUTE (FIXED 🔥)
 @app.get("/")
 def home():
     return {"message": "API running 🚀"}
 
-# ✅ Create booking
+# ✅ CREATE BOOKING
 @app.post("/bookings")
 def create_booking(booking: Booking):
     try:
@@ -50,8 +50,11 @@ def create_booking(booking: Booking):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-# ✅ Get all bookings (for admin)
+# ✅ GET BOOKINGS (ADMIN)
 @app.get("/bookings")
 def get_bookings():
-    bookings = list(bookings_collection.find({}, {"_id": 0}))
-    return bookings
+    try:
+        bookings = list(bookings_collection.find({}, {"_id": 0}))
+        return bookings
+    except Exception as e:
+        return {"success": False, "error": str(e)}
