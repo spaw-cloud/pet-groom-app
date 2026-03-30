@@ -23,16 +23,16 @@ export default function Bookings() {
     try {
       const res = await API.post("/bookings", form);
 
-      if (res.data.success) {
+      if (res.data?.success) {
         alert("Booking confirmed ✅");
 
-        // ✅ WhatsApp auto message (FREE)
+        // ✅ WhatsApp auto message
         window.open(
-          `https://wa.me/918778454723?text=New Booking:%0AName:${form.name}%0APhone:${form.phone}%0AAddress:${form.address}%0APet:${form.pet}%0ATime:${form.time}`,
+          `https://wa.me/91XXXXXXXXXX?text=New Booking:%0AName:${form.name}%0APhone:${form.phone}%0AAddress:${form.address}%0APet:${form.pet}%0ATime:${form.time}`,
           "_blank"
         );
 
-        // ✅ Reset form
+        // reset form
         setForm({
           name: "",
           phone: "",
@@ -53,44 +53,19 @@ export default function Bookings() {
     <div style={{ padding: "20px" }}>
       <h2>Book a Grooming Service 🐾</h2>
 
-      <input
-        name="name"
-        placeholder="Name"
-        value={form.name}
-        onChange={handleChange}
-      />
+      <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
       <br />
 
-      <input
-        name="phone"
-        placeholder="Phone"
-        value={form.phone}
-        onChange={handleChange}
-      />
+      <input name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} />
       <br />
 
-      <input
-        name="address"
-        placeholder="Address"
-        value={form.address}
-        onChange={handleChange}
-      />
+      <input name="address" placeholder="Address" value={form.address} onChange={handleChange} />
       <br />
 
-      <input
-        name="pet"
-        placeholder="Pet Breed"
-        value={form.pet}
-        onChange={handleChange}
-      />
+      <input name="pet" placeholder="Pet Breed" value={form.pet} onChange={handleChange} />
       <br />
 
-      <input
-        name="time"
-        placeholder="Preferred Time"
-        value={form.time}
-        onChange={handleChange}
-      />
+      <input name="time" placeholder="Preferred Time" value={form.time} onChange={handleChange} />
       <br />
 
       <button onClick={handleSubmit}>Book Now</button>
