@@ -1,92 +1,76 @@
-import { useEffect, useState } from "react";
-import api from "../lib/api";
+import { useState } from "react";
+import axios from "axios";
 
 export default function Bookings() {
-  const [services, setServices] = useState([]);
-  const [name, setName] = useState("");
-  const [selectedService, setSelectedService] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    pet: "",
+    time: "",
+  });
 
-  useEffect(() => {
-    api.get("/services").then((res) => setServices(res.data));
-  }, []);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-  const handleBooking = async () => {
-    if (!name || !selectedService || !date || !time) {
-      alert("Please fill all fields");
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name || !form.phone || !form.address) {
+      alert("Please fill all required fields ⚠️");
       return;
     }
 
-    const res = await api.post("/bookings", {
-      name,
-      service: selectedService,
-      date,
-      time,
-    });
+    try {
+      const res = await axios.post(`${API_URL}/bookings`, form);
 
-    if (res.data.error) {
-      alert(res.data.error);
-      return;
+      if (res.data.success) {
+        alert("Booking confirmed ✅");
+
+        // ✅ WhatsApp auto message (FREE)
+        window.open(
+          `https://wa.me/91XXXXXXXXXX?text=New Booking:%0AName:${form.name}%0APet:${form.pet}%0ATime:${form.time}`,
+          "_blank"
+        );
+
+        // reset form
+        setForm({
+          name: "",
+          phone: "",
+          address: "",
+          pet: "",
+          time: "",
+        });
+      } else {
+        alert("Something went wrong ❌");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error ❌");
     }
-
-    alert("Booking confirmed ✅");
-
-    setName("");
-    setSelectedService("");
-    setDate("");
-    setTime("");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-        
-        <h2 className="text-2xl font-bold text-center mb-6">
-          🐾 Book Grooming Service
-        </h2>
+    <div style={{ padding: "20px" }}>
+      <h2>Book a Grooming Service 🐾</h2>
 
-        <input
-          className="w-full p-3 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black"
-          placeholder="Your Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
+      <br />
 
-        <select
-          className="w-full p-3 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black"
-          value={selectedService}
-          onChange={(e) => setSelectedService(e.target.value)}
-        >
-          <option value="">Select Service</option>
-          {services.map((s, i) => (
-            <option key={i} value={s.name}>
-              {s.name} - ₹{s.price}
-            </option>
-          ))}
-        </select>
+      <input name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} />
+      <br />
 
-        <input
-          type="date"
-          className="w-full p-3 border rounded-lg mb-3 focus:outline-none"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+      <input name="address" placeholder="Address" value={form.address} onChange={handleChange} />
+      <br />
 
-        <input
-          type="time"
-          className="w-full p-3 border rounded-lg mb-4 focus:outline-none"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-        />
+      <input name="pet" placeholder="Pet Breed" value={form.pet} onChange={handleChange} />
+      <br />
 
-        <button
-          onClick={handleBooking}
-          className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition"
-        >
-          Book Now
-        </button>
-      </div>
+      <input name="time" placeholder="Preferred Time" value={form.time} onChange={handleChange} />
+      <br />
+
+      <button onClick={handleSubmit}>Book Now</button>
     </div>
   );
 }
