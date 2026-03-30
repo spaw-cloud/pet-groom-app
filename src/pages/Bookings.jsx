@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import API from "../lib/api";
 
 export default function Bookings() {
   const [form, setForm] = useState({
@@ -9,8 +9,6 @@ export default function Bookings() {
     pet: "",
     time: "",
   });
-
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -23,18 +21,18 @@ export default function Bookings() {
     }
 
     try {
-      const res = await axios.post(`${API_URL}/bookings`, form);
+      const res = await API.post("/bookings", form);
 
       if (res.data.success) {
         alert("Booking confirmed ✅");
 
         // ✅ WhatsApp auto message (FREE)
         window.open(
-          `https://wa.me/918778454723?text=New Booking:%0AName:${form.name}%0APet:${form.pet}%0ATime:${form.time}`,
+          `https://wa.me/918778454723?text=New Booking:%0AName:${form.name}%0APhone:${form.phone}%0AAddress:${form.address}%0APet:${form.pet}%0ATime:${form.time}`,
           "_blank"
         );
 
-        // reset form
+        // ✅ Reset form
         setForm({
           name: "",
           phone: "",
@@ -55,19 +53,44 @@ export default function Bookings() {
     <div style={{ padding: "20px" }}>
       <h2>Book a Grooming Service 🐾</h2>
 
-      <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
+      <input
+        name="name"
+        placeholder="Name"
+        value={form.name}
+        onChange={handleChange}
+      />
       <br />
 
-      <input name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} />
+      <input
+        name="phone"
+        placeholder="Phone"
+        value={form.phone}
+        onChange={handleChange}
+      />
       <br />
 
-      <input name="address" placeholder="Address" value={form.address} onChange={handleChange} />
+      <input
+        name="address"
+        placeholder="Address"
+        value={form.address}
+        onChange={handleChange}
+      />
       <br />
 
-      <input name="pet" placeholder="Pet Breed" value={form.pet} onChange={handleChange} />
+      <input
+        name="pet"
+        placeholder="Pet Breed"
+        value={form.pet}
+        onChange={handleChange}
+      />
       <br />
 
-      <input name="time" placeholder="Preferred Time" value={form.time} onChange={handleChange} />
+      <input
+        name="time"
+        placeholder="Preferred Time"
+        value={form.time}
+        onChange={handleChange}
+      />
       <br />
 
       <button onClick={handleSubmit}>Book Now</button>
