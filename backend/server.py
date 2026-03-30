@@ -1,6 +1,6 @@
 # backend/server.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -8,27 +8,22 @@ import os
 
 app = FastAPI()
 
-# ✅ ENV (Render / Local)
+# ✅ MongoDB
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-
-# ✅ MongoDB connection
 client = MongoClient(MONGO_URI)
 db = client["spaw_db"]
 bookings_collection = db["bookings"]
 
-# ✅ CORS (VERY IMPORTANT)
+# ✅ CORS (IMPORTANT 🔥)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://your-vercel-app.vercel.app"  # change after frontend deploy
-    ],
+    allow_origins=["*"],  # allow all for now
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Model
+# ✅ Models
 class Booking(BaseModel):
     name: str
     phone: str
@@ -36,21 +31,32 @@ class Booking(BaseModel):
     pet: str
     time: str
 
-# ✅ ROOT ROUTE (FIXED 🔥)
+class LoginData(BaseModel):
+    username: str
+    password: str
+
+# ✅ Root
 @app.get("/")
 def home():
     return {"message": "API running 🚀"}
 
-# ✅ CREATE BOOKING
+# ✅ Login
+@app.post("/login")
+def login(data: LoginData):
+    if data.username == "admin" and data.password == "admin":
+        return {"success": True, "token": "admin-token"}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+# ✅ Create Booking
 @app.post("/bookings")
 def create_booking(booking: Booking):
     try:
         bookings_collection.insert_one(booking.dict())
-        return {"success": True, "message": "Booking saved ✅"}
+        return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-# ✅ GET BOOKINGS (ADMIN)
+# ✅ Get Bookings
 @app.get("/bookings")
 def get_bookings():
     try:
