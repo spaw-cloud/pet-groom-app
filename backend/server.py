@@ -1,134 +1,44 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import random
-import smtplib
-from email.mime.text import MIMEText
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pymongo import MongoClient
 import os
 
-app = Flask(__name__)
+app = FastAPI()
 
-# ✅ CORS (allow frontend)
-CORS(app, resources={r"/*": {"origins": "*"}})
+# CORS (allow frontend)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# =========================
-# HEALTH CHECK
-# =========================
-@app.route("/", methods=["GET"])
+# MongoDB connection
+MONGO_URI = "mongodb+srv://spaw_db_user:Spawappleid2026@cluster0.rtqzjmi.mongodb.net/spaw"
+
+client = MongoClient(MONGO_URI)
+db = client["spaw"]
+
+# Collections
+services_collection = db["services"]
+
+# Routes
+@app.get("/")
 def home():
-    return jsonify({"status": "Backend is running ✅"}), 200
+    return {"message": "Backend is running 🚀"}
 
-
-# =========================
-# OTP SYSTEM
-# =========================
-@app.route("/api/auth/send-otp", methods=["POST"])
-def send_otp():
-    try:
-        data = request.get_json()
-        email = data.get("email")
-
-        if not email:
-            return jsonify({"error": "Email is required"}), 400
-
-        otp = str(random.randint(100000, 999999))
-
-        sender_email = os.getenv("EMAIL_USER")
-        sender_password = os.getenv("EMAIL_PASS")
-
-        if not sender_email or not sender_password:
-            return jsonify({"error": "Email credentials missing"}), 500
-
-        msg = MIMEText(f"Your OTP is: {otp}")
-        msg["Subject"] = "Your OTP Code"
-        msg["From"] = sender_email
-        msg["To"] = email
-
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
-
-        print(f"OTP sent to {email}: {otp}")
-
-        return jsonify({"message": "OTP sent successfully"}), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/auth/verify-otp", methods=["POST"])
-def verify_otp():
-    return jsonify({"message": "OTP verified ✅"}), 200
-
-
-# =========================
-# SERVICES (FULL CRUD)
-# =========================
-
-# 🔴 TEMP DATABASE (resets on restart)
-services = [
-    {
-        "id": 1,
-        "name": "Bath & Grooming",
-        "price": 499,
-        "description": "Full bath with shampoo and drying"
-    },
-    {
-        "id": 2,
-        "name": "Hair Trimming",
-        "price": 299,
-        "description": "Basic trimming and styling"
-    }
-]
-
-
-# ✅ GET all services
-@app.route("/api/services", methods=["GET"])
+@app.get("/services")
 def get_services():
-    return jsonify(services), 200
+    services = list(services_collection.find({}, {"_id": 0}))
+    return services
 
+@app.post("/services")
+def add_service(service: dict):
+    services_collection.insert_one(service)
+    return {"message": "Service added successfully"}
 
-# ✅ ADD service
-@app.route("/api/services", methods=["POST"])
-def add_service():
-    try:
-        data = request.get_json()
-
-        name = data.get("name")
-        price = data.get("price")
-
-        if not name or not price:
-            return jsonify({"error": "Name and price required"}), 400
-
-        new_service = {
-            "id": services[-1]["id"] + 1 if services else 1,
-            "name": name,
-            "price": price,
-            "description": data.get("description", "")
-        }
-
-        services.append(new_service)
-
-        return jsonify(new_service), 201
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ✅ DELETE service
-@app.route("/api/services/<int:id>", methods=["DELETE"])
-def delete_service(id):
-    global services
-
-    services = [s for s in services if s["id"] != id]
-
-    return jsonify({"message": "Service deleted"}), 200
-
-
-# =========================
-# RUN SERVER (RENDER FIX)
-# =========================
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+@app.delete("/services/{name}")
+def delete_service(name: str):
+    services_collection.delete_one({"name": name})
+    return {"message": "Service deleted"}
