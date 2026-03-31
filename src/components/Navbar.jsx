@@ -1,15 +1,63 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Navbar() {
-  return (
-    <div className="bg-black text-white px-6 py-4 flex justify-between items-center">
-      <h1 className="text-lg font-bold">🐾 SPAW</h1>
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
-      <div className="space-x-4">
-        <Link to="/">Home</Link>
-        <Link to="/admin/bookings">Admin</Link>
-        <Link to="/login">Login</Link>
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
+  return (
+    <div style={styles.nav}>
+      <h2 style={styles.logo}>🐾 SPAW</h2>
+
+      <div>
+        <Link to="/" style={styles.link}>Home</Link>
+
+        {token && (
+          <>
+            <Link to="/admin/services" style={styles.link}>Services</Link>
+            <Link to="/admin/bookings" style={styles.link}>Bookings</Link>
+          </>
+        )}
+      </div>
+
+      <div>
+        {!token ? (
+          <Link to="/login" style={styles.button}>Login</Link>
+        ) : (
+          <button onClick={handleLogout} style={styles.button}>Logout</button>
+        )}
       </div>
     </div>
   );
 }
+
+const styles = {
+  nav: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "15px 30px",
+    background: "#020617",
+    color: "#fff",
+  },
+  logo: {
+    margin: 0,
+  },
+  link: {
+    marginRight: "15px",
+    color: "#cbd5f5",
+    textDecoration: "none",
+  },
+  button: {
+    padding: "8px 15px",
+    background: "#2563eb",
+    border: "none",
+    color: "#fff",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+};

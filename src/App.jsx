@@ -1,32 +1,41 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import ClientLogin from "./pages/ClientLogin";
+import Login from "./pages/Login";
 import Bookings from "./pages/Bookings";
 import AdminServices from "./pages/admin/AdminServices";
-import AdminBookings from "./pages/admin/AdminBookings";
-import Login from "./pages/Login";
 import Navbar from "./components/Navbar";
 
-// 🔐 Protect Admin Routes
+// 🔐 Admin protection
 const AdminRoute = ({ children }) => {
-  const token = localStorage.getItem("token");
-  return token ? children : <Navigate to="/login" />;
+  const token = localStorage.getItem("adminToken");
+  return token ? children : <Navigate to="/admin/login" />;
+};
+
+// 👤 Client protection
+const ClientRoute = ({ children }) => {
+  const token = localStorage.getItem("clientToken");
+  return token ? children : <Navigate to="/" />;
 };
 
 export default function App() {
   return (
-    <Router
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
+    <>
       <Navbar />
 
       <Routes>
-        {/* Public */}
-        <Route path="/" element={<Bookings />} />
-        <Route path="/login" element={<Login />} />
+        {/* Client */}
+        <Route path="/" element={<ClientLogin />} />
+        <Route
+          path="/book"
+          element={
+            <ClientRoute>
+              <Bookings />
+            </ClientRoute>
+          }
+        />
 
         {/* Admin */}
+        <Route path="/admin/login" element={<Login />} />
         <Route
           path="/admin/services"
           element={
@@ -35,16 +44,7 @@ export default function App() {
             </AdminRoute>
           }
         />
-
-        <Route
-          path="/admin/bookings"
-          element={
-            <AdminRoute>
-              <AdminBookings />
-            </AdminRoute>
-          }
-        />
       </Routes>
-    </Router>
+    </>
   );
 }

@@ -1,65 +1,60 @@
+# backend/server.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from pymongo import MongoClient
+import os
 
 app = FastAPI()
 
-# CORS
+# ✅ ENV (Render / Local)
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+
+# ✅ MongoDB connection
+client = MongoClient(MONGO_URI)
+db = client["spaw_db"]
+bookings_collection = db["bookings"]
+
+# ✅ CORS (VERY IMPORTANT)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://your-vercel-app.vercel.app"  # change after frontend deploy
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# MongoDB
-MONGO_URI = "mongodb+srv://spaw_db_user:YOUR_PASSWORD@cluster0.rtqzjmi.mongodb.net/spaw"
-client = MongoClient(MONGO_URI)
-db = client["spaw"]
+# ✅ Model
+class Booking(BaseModel):
+    name: str
+    phone: str
+    address: str
+    pet: str
+    time: str
 
-services_collection = db["services"]
-bookings_collection = db["bookings"]
-
-# Home
+# ✅ ROOT ROUTE (FIXED 🔥)
 @app.get("/")
 def home():
-    return {"message": "Backend is running 🚀"}
+    return {"message": "API running 🚀"}
 
-# SERVICES APIs
-@app.get("/services")
-def get_services():
-    return list(services_collection.find({}, {"_id": 0}))
-
-@app.post("/services")
-def add_service(service: dict):
-    services_collection.insert_one(service)
-    return {"message": "Service added"}
-
-@app.delete("/services/{name}")
-def delete_service(name: str):
-    services_collection.delete_one({"name": name})
-    return {"message": "Service deleted"}
-
-# BOOKINGS APIs
+# ✅ CREATE BOOKING
 @app.post("/bookings")
-def create_booking(data: dict):
-    existing = bookings_collection.find_one({
-        "date": data.get("date"),
-        "time": data.get("time")
-    })
+def create_booking(booking: Booking):
+    try:
+        bookings_collection.insert_one(booking.dict())
+        return {"success": True, "message": "Booking saved ✅"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
-    if existing:
-        return {"error": "Slot already booked ❌"}
-
-    bookings_collection.insert_one(data)
-    return {"message": "Booking created ✅"}
-
+# ✅ GET BOOKINGS (ADMIN)
 @app.get("/bookings")
 def get_bookings():
-    return list(bookings_collection.find({}, {"_id": 0}))
-
-@app.delete("/bookings/{name}")
-def delete_booking(name: str):
-    bookings_collection.delete_one({"name": name})
-    return {"message": "Booking deleted"}
+    try:
+        bookings = list(bookings_collection.find({}, {"_id": 0}))
+        return bookings
+    except Exception as e:
+        return {"success": False, "error": str(e)}

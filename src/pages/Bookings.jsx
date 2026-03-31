@@ -1,92 +1,76 @@
-import { useEffect, useState } from "react";
-import api from "../lib/api";
+import { useState } from "react";
+import API from "../lib/api";
 
 export default function Bookings() {
-  const [services, setServices] = useState([]);
-  const [name, setName] = useState("");
-  const [selectedService, setSelectedService] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    pet: "",
+    time: "",
+  });
 
-  useEffect(() => {
-    api.get("/services").then((res) => setServices(res.data));
-  }, []);
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-  const handleBooking = async () => {
-    if (!name || !selectedService || !date || !time) {
-      alert("Please fill all fields");
-      return;
+  const handleSubmit = async () => {
+    try {
+      await API.post("/bookings", form);
+      alert("Booking confirmed ✅");
+    } catch {
+      alert("Error ❌");
     }
-
-    const res = await api.post("/bookings", {
-      name,
-      service: selectedService,
-      date,
-      time,
-    });
-
-    if (res.data.error) {
-      alert(res.data.error);
-      return;
-    }
-
-    alert("Booking confirmed ✅");
-
-    setName("");
-    setSelectedService("");
-    setDate("");
-    setTime("");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-        
-        <h2 className="text-2xl font-bold text-center mb-6">
-          🐾 Book Grooming Service
-        </h2>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h2>🐾 Book Grooming Service</h2>
 
-        <input
-          className="w-full p-3 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black"
-          placeholder="Your Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <input name="name" placeholder="Your Name" onChange={handleChange} style={styles.input} />
+        <input name="phone" placeholder="Phone Number" onChange={handleChange} style={styles.input} />
+        <input name="address" placeholder="Address" onChange={handleChange} style={styles.input} />
+        <input name="pet" placeholder="Pet Breed" onChange={handleChange} style={styles.input} />
+        <input name="time" placeholder="Preferred Time" onChange={handleChange} style={styles.input} />
 
-        <select
-          className="w-full p-3 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black"
-          value={selectedService}
-          onChange={(e) => setSelectedService(e.target.value)}
-        >
-          <option value="">Select Service</option>
-          {services.map((s, i) => (
-            <option key={i} value={s.name}>
-              {s.name} - ₹{s.price}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="date"
-          className="w-full p-3 border rounded-lg mb-3 focus:outline-none"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-
-        <input
-          type="time"
-          className="w-full p-3 border rounded-lg mb-4 focus:outline-none"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-        />
-
-        <button
-          onClick={handleBooking}
-          className="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition"
-        >
-          Book Now
+        <button onClick={handleSubmit} style={styles.button}>
+          Book Now 🚀
         </button>
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    background: "#fff",
+    padding: "30px",
+    borderRadius: "12px",
+    width: "350px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+  },
+  input: {
+    width: "100%",
+    padding: "10px",
+    marginBottom: "12px",
+    borderRadius: "6px",
+    border: "1px solid #ddd",
+  },
+  button: {
+    width: "100%",
+    padding: "12px",
+    background: "#16a34a",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+};
