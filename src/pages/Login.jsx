@@ -1,57 +1,148 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import API from "../lib/api";
 
 export default function Login() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    otp: "",
+  });
 
-  const handleLogin = async () => {
-    if (!username || !password) {
-      alert("Enter username & password");
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSendOtp = () => {
+    if (!form.name || !form.phone) {
+      alert("Please fill required fields");
       return;
     }
 
-    try {
-      const res = await API.post("/login", {
-        username,
-        password,
-      });
+    // TODO: API call
+    setStep(2);
+  };
 
-      if (res.data.success) {
-        localStorage.setItem("token", res.data.token);
-        alert("Login successful ✅");
-        navigate("/admin/services");
-      } else {
-        alert("Invalid login ❌");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Login failed ❌");
-    }
+  const handleVerifyOtp = () => {
+    // TODO: verify API
+    localStorage.setItem("user", JSON.stringify(form));
+    window.location.href = "/booking";
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Admin Login</h2>
+    <div className="min-h-screen flex items-center justify-center px-4 premium-bg overflow-hidden relative">
 
+      {/* Glow Effects */}
+      <div className="absolute glow-green" />
+      <div className="absolute glow-blue" />
+
+      {/* Card */}
+      <div className="relative w-full max-w-md premium-card p-8 text-white">
+
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold tracking-wide">
+            🐾 SPAW
+          </h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Premium Pet Grooming
+          </p>
+        </div>
+
+        {/* Heading */}
+        <h2 className="text-2xl font-semibold text-center mb-6">
+          {step === 1 ? "Welcome Back" : "Enter OTP"}
+        </h2>
+
+        {/* STEP 1 */}
+        {step === 1 && (
+          <div className="space-y-5">
+
+            <InputField
+              label="Full Name"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+            />
+
+            <InputField
+              label="Email Address"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+            />
+
+            <InputField
+              label="Phone Number"
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+            />
+
+            <button
+              onClick={handleSendOtp}
+              className="premium-button"
+            >
+              Continue →
+            </button>
+          </div>
+        )}
+
+        {/* STEP 2 */}
+        {step === 2 && (
+          <div className="space-y-5">
+
+            <input
+              type="text"
+              name="otp"
+              placeholder="••••••"
+              value={form.otp}
+              onChange={handleChange}
+              maxLength={6}
+              className="otp-input"
+            />
+
+            <button
+              onClick={handleVerifyOtp}
+              className="premium-button"
+            >
+              Verify & Continue
+            </button>
+
+            <button
+              onClick={() => setStep(1)}
+              className="text-sm text-gray-400 hover:text-white transition"
+            >
+              Edit details
+            </button>
+          </div>
+        )}
+
+        {/* Footer */}
+        <p className="text-xs text-gray-500 text-center mt-8">
+          Trusted by 500+ pet owners 🐶
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* Floating Input */
+function InputField({ label, name, value, onChange }) {
+  return (
+    <div className="relative">
       <input
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        type="text"
+        name={name}
+        value={value}
+        onChange={onChange}
+        required
+        placeholder=" "
+        className="premium-input peer"
       />
-      <br />
-
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <br />
-
-      <button onClick={handleLogin}>Login</button>
+      <label className="premium-label">
+        {label}
+      </label>
     </div>
   );
 }
