@@ -1,60 +1,71 @@
-# backend/server.py
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from pymongo import MongoClient
+from bson import ObjectId
 import os
 
-app = FastAPI()
+app = Flask(__name__)
 
-# ✅ ENV (Render / Local)
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+# ✅ Allow frontend (Vercel) to access backend
+CORS(app)
 
-# ✅ MongoDB connection
+# ✅ MongoDB connection (set this in Render env)
+MONGO_URI = os.environ.get("MONGO_URI")
 client = MongoClient(MONGO_URI)
-db = client["spaw_db"]
-bookings_collection = db["bookings"]
+db = client["pet_grooming"]
+collection = db["bookings"]
 
-# ✅ CORS (VERY IMPORTANT)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://your-vercel-app.vercel.app"  # change after frontend deploy
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ✅ Model
-class Booking(BaseModel):
-    name: str
-    phone: str
-    address: str
-    pet: str
-    time: str
-
-# ✅ ROOT ROUTE (FIXED 🔥)
-@app.get("/")
+# ✅ Test route
+@app.route("/")
 def home():
-    return {"message": "API running 🚀"}
+    return "Backend is running 🚀"
 
-# ✅ CREATE BOOKING
-@app.post("/bookings")
-def create_booking(booking: Booking):
-    try:
-        bookings_collection.insert_one(booking.dict())
-        return {"success": True, "message": "Booking saved ✅"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-# ✅ GET BOOKINGS (ADMIN)
-@app.get("/bookings")
+# ✅ GET all bookings
+@app.route("/bookings", methods=["GET"])
 def get_bookings():
-    try:
-        bookings = list(bookings_collection.find({}, {"_id": 0}))
-        return bookings
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    bookings = []
+    for b in collection.find().sort("_id", -1):  # latest first
+        b["_id"] = str(b["_id"])
+        bookings.append(b)
+    return jsonify(bookings)
+
+# ✅ CREATE booking
+@app.route("/bookings", methods=["POST"])
+def create_booking():
+    data = request.json
+
+    new_booking = {
+        "name": data.get("name"),
+        "pet": data.get("pet"),
+        "phone": data.get("phone"),
+        "time": data.get("time"),
+        "address": data.get("address"),
+        "status": "Pending"
+    }
+
+    result = collection.insert_one(new_booking)
+    new_booking["_id"] = str(result.inserted_id)
+
+    return jsonify(new_booking), 201
+
+# ✅ UPDATE booking (status)
+@app.route("/bookings/<id>", methods=["PUT"])
+def update_booking(id):
+    data = request.json
+
+    collection.update_one(
+        {"_id": ObjectId(id)},
+        {"$set": {"status": data.get("status")}}
+    )
+
+    return jsonify({"message": "Updated successfully"})
+
+# ✅ DELETE booking
+@app.route("/bookings/<id>", methods=["DELETE"])
+def delete_booking(id):
+    collection.delete_one({"_id": ObjectId(id)})
+    return jsonify({"message": "Deleted successfully"})
+
+# ✅ Run locally
+if __name__ == "__main__":
+    app.run(debug=True)
