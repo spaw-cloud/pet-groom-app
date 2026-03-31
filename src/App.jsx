@@ -1,17 +1,19 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import Navbar from "./components/Navbar";
+
+// Pages
 import ClientLogin from "./pages/ClientLogin";
 import Login from "./pages/Login";
 import Bookings from "./pages/Bookings";
 import AdminServices from "./pages/admin/AdminServices";
-import Navbar from "./components/Navbar";
 
-// 🔐 Admin protection
+// 🔐 Admin Protection
 const AdminRoute = ({ children }) => {
   const token = localStorage.getItem("adminToken");
   return token ? children : <Navigate to="/admin/login" />;
 };
 
-// 👤 Client protection
+// 👤 Client Protection
 const ClientRoute = ({ children }) => {
   const token = localStorage.getItem("clientToken");
   return token ? children : <Navigate to="/" />;
@@ -23,8 +25,9 @@ export default function App() {
       <Navbar />
 
       <Routes>
-        {/* Client */}
+        {/* 👤 CLIENT ROUTES */}
         <Route path="/" element={<ClientLogin />} />
+
         <Route
           path="/book"
           element={
@@ -34,8 +37,9 @@ export default function App() {
           }
         />
 
-        {/* Admin */}
+        {/* 🔐 ADMIN ROUTES */}
         <Route path="/admin/login" element={<Login />} />
+
         <Route
           path="/admin/services"
           element={
@@ -44,6 +48,9 @@ export default function App() {
             </AdminRoute>
           }
         />
+
+        {/* 🚫 Catch invalid routes */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
   );
