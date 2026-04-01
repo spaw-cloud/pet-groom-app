@@ -1,28 +1,34 @@
 import axios from "axios";
 
-// ✅ Use correct ENV (Vercel) or fallback to Render backend
+// Change this when deploying (VERY IMPORTANT)
 const BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://pet-groom-app.onrender.com";
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// ✅ Create axios instance
-const API = axios.create({
+const api = axios.create({
   baseURL: BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// ✅ Debug logs (VERY helpful)
-console.log("API URL:", BASE_URL);
+// Optional: Request interceptor (for future auth token)
+api.interceptors.request.use(
+  (config) => {
+    // Example:
+    // const token = localStorage.getItem("token");
+    // if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-// ✅ Optional: handle errors globally
-API.interceptors.response.use(
+// Optional: Response interceptor (error handling)
+api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error(
-      "API ERROR:",
-      error.response?.data || error.message
-    );
+    console.error("API Error:", error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
 
-export default API;
+export default api;
