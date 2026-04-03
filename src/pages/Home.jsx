@@ -16,11 +16,14 @@ export default function Home() {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/api/services");
+
+      // ✅ FIXED ENDPOINT
+      const res = await api.get("/services");
+
       setServices(Array.isArray(res.data) ? res.data : []);
       setError("");
     } catch (err) {
-      console.error(err);
+      console.error("Service fetch error:", err);
       setError("Failed to load services");
     } finally {
       setLoading(false);
@@ -70,10 +73,13 @@ export default function Home() {
               <div key={id} style={styles.card}>
                 <h3>{s.name}</h3>
                 <p>₹{s.price}</p>
+
                 <button
                   type="button"
                   style={styles.button}
-                  onClick={() => navigate("/tabs/service", { state: { service: s } })}
+                  onClick={() =>
+                    navigate("/tabs/service", { state: { service: s } })
+                  }
                 >
                   Book Now
                 </button>
