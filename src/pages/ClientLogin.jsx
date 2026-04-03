@@ -7,18 +7,16 @@ export default function ClientLogin() {
   const [phone, setPhone] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
-    if (!phone.trim()) {
-      toast.error("Please enter phone number");
+  const handleLogin = () => {
+    const cleanPhone = phone.replace(/\D/g, "");
+
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast.error("Please enter a valid 10-digit phone number");
       return;
     }
 
-    try {
-      // ✅ Skip OTP → go directly to next step
-      navigate("/select-pet", { state: { phone: phone.trim() } });
-    } catch (e) {
-      toast.error("Something went wrong");
-    }
+    // ✅ Move to next step
+    navigate("/select-pet", { state: { phone: cleanPhone } });
   };
 
   return (
