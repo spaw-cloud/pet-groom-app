@@ -2,24 +2,22 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { useAuth } from "../contexts/AuthContext";
 
 export default function ClientLogin() {
   const [phone, setPhone] = useState("");
   const navigate = useNavigate();
-  const { sendOtp } = useAuth();
 
   const handleLogin = async () => {
     if (!phone.trim()) {
       toast.error("Please enter phone number");
       return;
     }
+
     try {
-      await sendOtp(phone.trim());
-      toast.success("OTP sent (use 123456 for demo)");
-      navigate("/verify-otp", { state: { phone: phone.trim() } });
+      // ✅ Skip OTP → go directly to next step
+      navigate("/select-pet", { state: { phone: phone.trim() } });
     } catch (e) {
-      toast.error(e.message || "Could not send OTP");
+      toast.error("Something went wrong");
     }
   };
 
@@ -31,7 +29,9 @@ export default function ClientLogin() {
         className="bg-white/10 backdrop-blur-lg border border-white/20 shadow-xl rounded-2xl p-8 w-80 text-white"
       >
         <h1 className="text-2xl font-bold text-center mb-2">SPAW</h1>
-        <p className="text-sm text-center mb-6 text-gray-300">Book grooming in seconds</p>
+        <p className="text-sm text-center mb-6 text-gray-300">
+          Book grooming in seconds
+        </p>
 
         <input
           type="tel"
@@ -49,7 +49,9 @@ export default function ClientLogin() {
           Continue
         </button>
 
-        <p className="text-xs text-center mt-4 text-gray-400">By continuing, you agree to our terms</p>
+        <p className="text-xs text-center mt-4 text-gray-400">
+          By continuing, you agree to our terms
+        </p>
       </motion.div>
     </div>
   );
