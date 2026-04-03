@@ -20,7 +20,7 @@ export default function ClientLogin() {
     }
 
     // ✅ Navigate to next page
-    navigate("/select-pet", { state: { phone: cleanPhone } });
+    navigate("/booking/select-pet", { state: { phone: cleanPhone } });
   };
 
   return (
