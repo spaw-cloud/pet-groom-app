@@ -7,15 +7,19 @@ export default function ClientLogin() {
   const [phone, setPhone] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = () => {
+  const handleLogin = (e) => {
+    e.preventDefault(); // ✅ prevent reload
+
     const cleanPhone = phone.replace(/\D/g, "");
+
+    console.log("Button clicked:", cleanPhone); // ✅ debug
 
     if (!cleanPhone || cleanPhone.length < 10) {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
 
-    // ✅ Move to next step
+    // ✅ Navigate to next page
     navigate("/select-pet", { state: { phone: cleanPhone } });
   };
 
@@ -31,21 +35,23 @@ export default function ClientLogin() {
           Book grooming in seconds
         </p>
 
-        <input
-          type="tel"
-          placeholder="Enter phone number"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full p-3 mb-4 rounded-lg bg-white/20 border border-white/30 placeholder-gray-300 text-white outline-none"
-        />
+        {/* ✅ FORM WRAPPER */}
+        <form onSubmit={handleLogin}>
+          <input
+            type="tel"
+            placeholder="Enter phone number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full p-3 mb-4 rounded-lg bg-white/20 border border-white/30 placeholder-gray-300 text-white outline-none"
+          />
 
-        <button
-          type="button"
-          onClick={handleLogin}
-          className="w-full bg-green-500 hover:bg-green-600 py-2 rounded-lg font-semibold transition"
-        >
-          Continue
-        </button>
+          <button
+            type="submit"
+            className="w-full bg-green-500 hover:bg-green-600 py-2 rounded-lg font-semibold transition"
+          >
+            Continue
+          </button>
+        </form>
 
         <p className="text-xs text-center mt-4 text-gray-400">
           By continuing, you agree to our terms
