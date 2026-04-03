@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { IoPaw, IoAdd, IoClose, IoTrash } from 'react-icons/io5';
+import { IoAdd, IoTrash } from 'react-icons/io5';
 import api from '../lib/api';
 
 export default function Pets() {
@@ -7,6 +7,7 @@ export default function Pets() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+
   const [form, setForm] = useState({
     name: '',
     breed: '',
@@ -14,15 +15,13 @@ export default function Pets() {
     weight: '',
     special_notes: ''
   });
-  const [deleteId, setDeleteId] = useState(null);
 
+  // ✅ FETCH PETS (FIXED)
   const fetchPets = useCallback(async () => {
     try {
       setLoading(true);
 
-      // ✅ FIXED
-      const res = await api.get("/pets")
-      await api.delete(`/pets/${id}`);
+      const res = await api.get("/pets"); // ✅ CORRECT
 
       setPets(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
@@ -36,13 +35,14 @@ export default function Pets() {
     fetchPets();
   }, [fetchPets]);
 
+  // ✅ SAVE PET
   const handleSave = async () => {
     if (!form.name || !form.breed) return;
 
     try {
       setSaving(true);
 
-      await api.post('/pets', form);
+      await api.post("/pets", form);
 
       setShowModal(false);
       setForm({
@@ -61,9 +61,9 @@ export default function Pets() {
     }
   };
 
+  // ✅ DELETE PET
   const handleDelete = async (petId) => {
     try {
-      // ✅ FIXED
       await api.delete(`/pets/${petId}`);
 
       setPets(prev =>
@@ -71,13 +71,12 @@ export default function Pets() {
       );
     } catch (err) {
       console.error("Delete pet error:", err);
-    } finally {
-      setDeleteId(null);
     }
   };
 
   return (
-    <div style={{ flex: 1, background: '#0f172a', padding: 20 }}>
+    <div style={{ flex: 1, background: '#0f172a', padding: 20, color: "#fff" }}>
+      
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 800 }}>My Pets</h1>
 
@@ -99,7 +98,7 @@ export default function Pets() {
               <h3>{pet.name}</h3>
               <p>{pet.breed}</p>
 
-              <button onClick={() => setDeleteId(id)}>
+              <button onClick={() => handleDelete(id)}>
                 <IoTrash />
               </button>
             </div>
@@ -107,7 +106,7 @@ export default function Pets() {
         })
       )}
 
-      {/* Add Modal */}
+      {/* ADD MODAL */}
       {showModal && (
         <div>
           <input
