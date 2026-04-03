@@ -22,10 +22,7 @@ import AdminCustomers from "./pages/admin/AdminCustomers";
 import CustomerDetail from "./pages/admin/CustomerDetail";
 import AdminAvailability from "./pages/admin/AdminAvailability";
 
-const ClientRoute = ({ children }) => {
-  const t = localStorage.getItem("session_token");
-  return t ? children : <Navigate to="/" replace />;
-};
+// ❌ Removed ClientRoute (was blocking navigation)
 
 const AdminRoute = ({ children }) => {
   const t = localStorage.getItem("admin_token");
@@ -37,18 +34,14 @@ export default function App() {
     <>
       <Toaster position="top-center" />
       <Navbar />
+
       <Routes>
+        {/* 🔓 Public Routes */}
         <Route path="/" element={<ClientLogin />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
 
-        <Route
-          path="/tabs"
-          element={
-            <ClientRoute>
-              <TabLayout />
-            </ClientRoute>
-          }
-        >
+        {/* 🔓 Tabs (no auth now) */}
+        <Route path="/tabs" element={<TabLayout />}>
           <Route index element={<Home />} />
           <Route path="service" element={<ServiceDetail />} />
           <Route path="bookings" element={<MyBookings />} />
@@ -56,49 +49,16 @@ export default function App() {
           <Route path="profile" element={<Profile />} />
         </Route>
 
-        <Route
-          path="/book"
-          element={
-            <ClientRoute>
-              <Bookings />
-            </ClientRoute>
-          }
-        />
+        {/* 🔓 Booking Flow (IMPORTANT FIX) */}
+        <Route path="/book" element={<Bookings />} />
+        <Route path="/booking/select-pet" element={<SelectPet />} />
+        <Route path="/booking/select-datetime" element={<SelectDateTime />} />
+        <Route path="/booking/select-address" element={<SelectAddress />} />
+        <Route path="/booking/confirmation" element={<Confirmation />} />
 
-        <Route
-          path="/booking/select-pet"
-          element={
-            <ClientRoute>
-              <SelectPet />
-            </ClientRoute>
-          }
-        />
-        <Route
-          path="/booking/select-datetime"
-          element={
-            <ClientRoute>
-              <SelectDateTime />
-            </ClientRoute>
-          }
-        />
-        <Route
-          path="/booking/select-address"
-          element={
-            <ClientRoute>
-              <SelectAddress />
-            </ClientRoute>
-          }
-        />
-        <Route
-          path="/booking/confirmation"
-          element={
-            <ClientRoute>
-              <Confirmation />
-            </ClientRoute>
-          }
-        />
-
+        {/* 🔒 Admin Routes (keep protected) */}
         <Route path="/admin/login" element={<AdminLogin />} />
+
         <Route
           path="/admin/dashboard"
           element={
@@ -148,6 +108,7 @@ export default function App() {
           }
         />
 
+        {/* fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
