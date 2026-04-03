@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
 import { IoArrowBack, IoCalendar, IoTime, IoTrash, IoChevronBack, IoChevronForward } from 'react-icons/io5';
 import axios from 'axios';
-
-const BACKEND_URL = import.meta.env.REACT_APP_BACKEND_URL;
-const TIME_SLOTS = ['10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM'];
+import { API_BASE_URL } from '../../lib/api';
+const TIME_SLOTS = ['10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -20,13 +19,13 @@ export default function AdminAvailability() {
   const [tab, setTab] = useState('dates');
 
   useEffect(() => {
-    if (!authLoading && !admin) { navigate('/admin', { replace: true }); return; }
+    if (!authLoading && !admin) { navigate('/admin/login', { replace: true }); return; }
     if (token) fetchAvailability();
   }, [admin, authLoading, token]);
 
   const fetchAvailability = useCallback(async () => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/booked-slots`);
+      const res = await axios.get(`${API_BASE_URL}/api/booked-slots`);
       setBlockedDates(res.data.dates || []);
       setBlockedSlots(res.data.slots || {});
     } catch {} finally { setLoading(false); }
@@ -34,28 +33,28 @@ export default function AdminAvailability() {
 
   const blockDate = async (dateStr) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/admin/block-date`, { date: dateStr }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${API_BASE_URL}/api/admin/block-date`, { date: dateStr }, { headers: { Authorization: `Bearer ${token}` } });
       setBlockedDates(prev => [...prev, dateStr]);
     } catch {}
   };
 
   const unblockDate = async (dateStr) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/admin/unblock-date`, { date: dateStr }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${API_BASE_URL}/api/admin/unblock-date`, { date: dateStr }, { headers: { Authorization: `Bearer ${token}` } });
       setBlockedDates(prev => prev.filter(d => d !== dateStr));
     } catch {}
   };
 
   const blockSlot = async (dateStr, time) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/admin/block-slot`, { date: dateStr, time }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${API_BASE_URL}/api/admin/block-slot`, { date: dateStr, time }, { headers: { Authorization: `Bearer ${token}` } });
       setBlockedSlots(prev => ({ ...prev, [dateStr]: [...(prev[dateStr] || []), time] }));
     } catch {}
   };
 
   const unblockSlot = async (dateStr, time) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/admin/unblock-slot`, { date: dateStr, time }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${API_BASE_URL}/api/admin/unblock-slot`, { date: dateStr, time }, { headers: { Authorization: `Bearer ${token}` } });
       setBlockedSlots(prev => ({ ...prev, [dateStr]: (prev[dateStr] || []).filter(t => t !== time) }));
     } catch {}
   };

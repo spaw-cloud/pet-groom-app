@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 
 export default function Home() {
@@ -6,6 +7,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchServices();
@@ -14,8 +16,9 @@ export default function Home() {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/services");
-      setServices(res.data);
+      const res = await api.get("/api/services");
+      setServices(Array.isArray(res.data) ? res.data : []);
+      setError("");
     } catch (err) {
       console.error(err);
       setError("Failed to load services");
@@ -25,14 +28,13 @@ export default function Home() {
   };
 
   const filtered = services.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase())
+    (s.name || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Our Services</h2>
 
-      {/* SEARCH */}
       <input
         style={styles.search}
         placeholder="Search services..."
@@ -40,45 +42,44 @@ export default function Home() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      {/* LOADING */}
       {loading && (
         <div style={styles.grid}>
           {[1, 2, 3].map((i) => (
-            <div key={i} style={styles.skeleton}></div>
+            <div key={i} style={styles.skeleton} />
           ))}
         </div>
       )}
 
-      {/* ERROR */}
-      {!loading && error && (
-        <div style={styles.error}>{error}</div>
-      )}
+      {!loading && error && <div style={styles.error}>{error}</div>}
 
-      {/* EMPTY STATE */}
       {!loading && !error && filtered.length === 0 && (
         <div style={styles.empty}>
-          <h3>No services available 🐾</h3>
+          <h3>No services available</h3>
           <p>Add services from admin panel</p>
-          <button onClick={fetchServices}>Refresh</button>
+          <button type="button" onClick={fetchServices}>
+            Refresh
+          </button>
         </div>
       )}
 
-      {/* SERVICES LIST */}
       {!loading && filtered.length > 0 && (
         <div style={styles.grid}>
-          {filtered.map((s) => (
-            <div key={s.id} style={styles.card}>
-              <h3>{s.name}</h3>
-              <p>₹{s.price}</p>
-
-              <button
-                style={styles.button}
-                onClick={() => alert(`Booking ${s.name}`)}
-              >
-                Book Now
-              </button>
-            </div>
-          ))}
+          {filtered.map((s) => {
+            const id = s.service_id ?? s.id;
+            return (
+              <div key={id} style={styles.card}>
+                <h3>{s.name}</h3>
+                <p>₹{s.price}</p>
+                <button
+                  type="button"
+                  style={styles.button}
+                  onClick={() => navigate("/tabs/service", { state: { service: s } })}
+                >
+                  Book Now
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

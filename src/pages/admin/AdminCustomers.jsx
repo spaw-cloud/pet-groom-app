@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../contexts/AdminContext';
 import { IoArrowBack, IoSearch, IoChevronForward } from 'react-icons/io5';
 import axios from 'axios';
-
-const BACKEND_URL = import.meta.env.REACT_APP_BACKEND_URL;
+import { API_BASE_URL } from '../../lib/api';
 
 export default function AdminCustomers() {
   const { admin, token, loading: authLoading } = useAdmin();
@@ -14,13 +13,13 @@ export default function AdminCustomers() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (!authLoading && !admin) { navigate('/admin', { replace: true }); return; }
+    if (!authLoading && !admin) { navigate('/admin/login', { replace: true }); return; }
     if (token) fetchCustomers();
   }, [admin, authLoading, token]);
 
   const fetchCustomers = useCallback(async () => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/admin/customers`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${API_BASE_URL}/api/admin/customers`, { headers: { Authorization: `Bearer ${token}` } });
       setCustomers(res.data);
     } catch {} finally { setLoading(false); }
   }, [token]);

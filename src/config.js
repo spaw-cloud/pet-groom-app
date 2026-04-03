@@ -1,3 +1,1 @@
-const BACKEND_URL = "https://pet-groom-app.onrender.com";
-
-export default BACKEND_URL;
+export { API_BASE_URL } from "./lib/api";

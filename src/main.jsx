@@ -1,12 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
 import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import { AuthProvider } from "./contexts/AuthContext";
+import { AdminProvider } from "./contexts/AdminContext";
 import "./index.css";
 
-// ✅ Simple safe render (no crash)
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
+  <React.StrictMode>
+    <BrowserRouter>
+      <AuthProvider>
+        <AdminProvider>
+          <App />
+        </AdminProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </React.StrictMode>
 );

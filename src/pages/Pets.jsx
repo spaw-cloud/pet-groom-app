@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { IoPaw, IoAdd, IoClose, IoTrash, IoRefresh } from 'react-icons/io5';
 import api from '../lib/api';
 
 export default function Pets() {
-  const { token } = useAuth();
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -14,7 +12,7 @@ export default function Pets() {
 
   const fetchPets = useCallback(async () => {
     try {
-      const res = await api.get('/pets');
+      const res = await api.get('/api/pets');
       setPets(res.data);
     } catch {} finally { setLoading(false); }
   }, []);
@@ -34,7 +32,7 @@ export default function Pets() {
 
   const handleDelete = async (petId) => {
     try {
-      await api.delete(`/pets/${petId}`);
+      await api.delete(`/api/pets/${petId}`);
       setPets(prev => prev.filter(p => (p.pet_id || p.id) !== petId));
     } catch {} finally { setDeleteId(null); }
   };

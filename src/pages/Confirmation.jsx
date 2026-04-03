@@ -14,7 +14,14 @@ export default function Confirmation() {
   const handleBook = async () => {
     try {
       setBooking(true); setError('');
-      await api.post('/bookings', { service_id: service.service_id || service.id, pet_id: petId, booking_date: date, booking_time: time, address_id: addressId });
+      await api.post("/api/bookings", {
+        service_id: service.service_id || service.id,
+        pet_id: petId,
+        date,
+        time,
+        address_id: addressId,
+        payment_type: "post_service",
+      });
       setBooked(true);
     } catch (err) { setError(err?.response?.data?.detail || 'Booking failed. Please try again.'); }
     finally { setBooking(false); }

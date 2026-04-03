@@ -18,7 +18,7 @@ export default function SelectAddress() {
   useEffect(() => { if (!service) navigate('/tabs', { replace: true }); }, [service]);
 
   const fetchAddresses = useCallback(async () => {
-    try { const res = await api.get('/addresses'); setAddresses(res.data); }
+    try { const res = await api.get('/api/addresses'); setAddresses(res.data); }
     catch {} finally { setLoading(false); }
   }, []);
 
@@ -28,7 +28,7 @@ export default function SelectAddress() {
     if (!form.house_number || !form.street || !form.area || !form.city || !form.pincode) return;
     try {
       setSaving(true);
-      await api.post('/addresses', form);
+      await api.post('/api/addresses', form);
       setShowModal(false);
       setForm({ house_number: '', street: '', area: '', city: '', pincode: '', landmark: '' });
       fetchAddresses();

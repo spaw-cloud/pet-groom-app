@@ -15,7 +15,7 @@ export default function Profile() {
   const [deleteId, setDeleteId] = useState(null);
 
   const fetchAddresses = useCallback(async () => {
-    try { const res = await api.get('/addresses'); setAddresses(res.data); }
+    try { const res = await api.get('/api/addresses'); setAddresses(res.data); }
     catch {} finally { setLoading(false); }
   }, []);
 
@@ -25,7 +25,7 @@ export default function Profile() {
     if (!form.house_number || !form.street || !form.area || !form.city || !form.pincode) return;
     try {
       setSaving(true);
-      await api.post('/addresses', form);
+      await api.post('/api/addresses', form);
       setShowAddressModal(false);
       setForm({ house_number: '', street: '', area: '', city: '', pincode: '', landmark: '' });
       fetchAddresses();
@@ -34,7 +34,7 @@ export default function Profile() {
 
   const handleDeleteAddress = async (addrId) => {
     try {
-      await api.delete(`/addresses/${addrId}`);
+      await api.delete(`/api/addresses/${addrId}`);
       setAddresses(prev => prev.filter(a => (a.address_id || a.id) !== addrId));
     } catch {} finally { setDeleteId(null); }
   };

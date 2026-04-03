@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { IoNotificationsOutline, IoNotifications, IoClose, IoCheckmarkCircle, IoTrophy, IoCloseCircle, IoCalendar, IoNotificationsOffOutline } from 'react-icons/io5';
 import axios from 'axios';
-
-const BACKEND_URL = import.meta.env.REACT_APP_BACKEND_URL;
+import { API_BASE_URL } from '../lib/api';
 
 export default function NotificationBell({ token, type }) {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -14,7 +13,7 @@ export default function NotificationBell({ token, type }) {
   const fetchUnread = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await axios.get(`${BACKEND_URL}${basePath}/unread-count`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${API_BASE_URL}${basePath}/unread-count`, { headers: { Authorization: `Bearer ${token}` } });
       setUnreadCount(res.data.count);
     } catch {}
   }, [token, basePath]);
@@ -29,7 +28,7 @@ export default function NotificationBell({ token, type }) {
     setVisible(true);
     setLoading(true);
     try {
-      const res = await axios.get(`${BACKEND_URL}${basePath}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${API_BASE_URL}${basePath}`, { headers: { Authorization: `Bearer ${token}` } });
       setNotifications(res.data);
     } catch {}
     setLoading(false);
@@ -37,7 +36,7 @@ export default function NotificationBell({ token, type }) {
 
   const markRead = async (notifId) => {
     try {
-      await axios.put(`${BACKEND_URL}${basePath}/${notifId}/read`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${API_BASE_URL}${basePath}/${notifId}/read`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setNotifications(prev => prev.map(n => n.notification_id === notifId ? { ...n, read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch {}
@@ -45,7 +44,7 @@ export default function NotificationBell({ token, type }) {
 
   const markAllRead = async () => {
     try {
-      await axios.put(`${BACKEND_URL}${basePath}/read-all`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${API_BASE_URL}${basePath}/read-all`, {}, { headers: { Authorization: `Bearer ${token}` } });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch {}

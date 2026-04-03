@@ -17,7 +17,7 @@ export default function SelectPet() {
   useEffect(() => { if (!service) navigate('/tabs', { replace: true }); }, [service]);
 
   const fetchPets = useCallback(async () => {
-    try { const res = await api.get('/pets'); setPets(res.data); }
+    try { const res = await api.get('/api/pets'); setPets(res.data); }
     catch {} finally { setLoading(false); }
   }, []);
 
@@ -27,7 +27,7 @@ export default function SelectPet() {
     if (!form.name || !form.breed) return;
     try {
       setSaving(true);
-      await api.post('/pets', form);
+      await api.post('/api/pets', form);
       setShowModal(false);
       setForm({ name: '', breed: '', age: '', weight: '', special_notes: '' });
       fetchPets();
