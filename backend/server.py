@@ -1,91 +1,65 @@
-# backend/server.py
-
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from pymongo import MongoClient
 import os
 
 app = FastAPI()
 
-# =========================
-# ✅ ENV (Render / Local)
-# =========================
-MONGO_URI = os.getenv("MONGO_URI")
-
-if not MONGO_URI:
-    raise Exception("❌ MONGO_URI not set in environment variables")
-
-# =========================
-# ✅ MongoDB connection
-# =========================
-try:
-    client = MongoClient(MONGO_URI)
-    db = client["spaw_db"]
-    bookings_collection = db["bookings"]
-
-    # test connection
-    client.admin.command("ping")
-    print("✅ MongoDB Connected")
-
-except Exception as e:
-    print("❌ MongoDB Connection Failed:", e)
-    raise e
-
-# =========================
-# ✅ CORS (IMPORTANT)
-# =========================
-origins = [
-    "http://localhost:5173",
-    "https://pet-groom-app.vercel.app",  # 🔁 CHANGE THIS AFTER DEPLOY
-]
-
+# ✅ CORS (IMPORTANT for frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # you can restrict later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# =========================
-# ✅ Model
-# =========================
-class Booking(BaseModel):
-    name: str
-    phone: str
-    address: str
-    pet: str
-    time: str
+# ✅ ENV (Render / Local)
+MONGO_URI = os.getenv("MONGO_URI")
 
-# =========================
-# ✅ ROOT ROUTE
-# =========================
+if not MONGO_URI:
+    raise Exception("❌ MONGO_URI not set in environment variables")
+
+# ✅ MongoDB connection
+client = MongoClient(MONGO_URI)
+db = client["spaw_db"]
+
+print("✅ MongoDB Connected")
+
+# ============================================
+# 🔥 TEMP DATA (for frontend testing)
+# ============================================
+
+services_data = [
+    {"id": 1, "name": "Basic Grooming", "price": 499},
+    {"id": 2, "name": "Full Grooming", "price": 999},
+    {"id": 3, "name": "Hair Cut", "price": 299},
+]
+
+pets_data = []
+
+# ============================================
+# ✅ ROUTES
+# ============================================
+
+# 🔹 Root check
 @app.get("/")
-def home():
-    return {"message": "API running 🚀"}
+def root():
+    return {"message": "Backend is running 🚀"}
 
-# =========================
-# ✅ CREATE BOOKING
-# =========================
-@app.post("/bookings")
-def create_booking(booking: Booking):
-    try:
-        bookings_collection.insert_one(booking.model_dump())
-        return {
-            "success": True,
-            "message": "Booking saved ✅"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# 🔹 SERVICES
+@app.get("/services")
+def get_services():
+    return services_data
 
-# =========================
-# ✅ GET BOOKINGS (ADMIN)
-# =========================
-@app.get("/bookings")
-def get_bookings():
-    try:
-        bookings = list(bookings_collection.find({}, {"_id": 0}))
-        return bookings
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# 🔹 PETS
+@app.get("/pets")
+def get_pets():
+    return pets_data
+
+# 🔹 DELETE PET
+@app.delete("/pets/{pet_id}")
+def delete_pet(pet_id: int):
+    global pets_data
+    pets_data = [p for p in pets_data if p.get("id") != pet_id]
+    return {"message": "Pet deleted"}

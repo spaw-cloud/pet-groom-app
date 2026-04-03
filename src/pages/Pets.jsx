@@ -21,7 +21,8 @@ export default function Pets() {
       setLoading(true);
 
       // ✅ FIXED
-      const res = await api.get('/pets');
+      const res = await api.get("/pets")
+      await api.delete(`/pets/${id}`);
 
       setPets(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
