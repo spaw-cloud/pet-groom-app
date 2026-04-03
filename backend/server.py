@@ -37,7 +37,7 @@ except Exception as e:
 # =========================
 origins = [
     "http://localhost:5173",
-    "https://spaw-group.vercel.app",  # 🔁 CHANGE THIS AFTER DEPLOY
+    "https://pet-groom-app.vercel.app",  # 🔁 CHANGE THIS AFTER DEPLOY
 ]
 
 app.add_middleware(
